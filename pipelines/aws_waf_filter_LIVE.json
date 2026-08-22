@@ -1,0 +1,28 @@
+{
+  "_status": "LIVE state of AWS_Filter2 (AWS_WAF) as of updateTime below. Captured for the record.",
+  "_analysis": "ONE rule, narrow: drops only ALB monitoring/health-check user-agents (ELB-HealthChecker, Blackbox Exporter, Grafana, Java-EurekaClient). The main WAF lever - dropping action=ALLOW, keeping BLOCK - is NOT used. See BL-10: potential ~1.5 TB/month gain, needs a real WAF sample (to confirm the action field) + sign-off.",
+  "name": "projects/721279881207/locations/europe-west2/instances/c98f7d82-a2a4-45a1-a96a-a4dee6cf39fd/logProcessingPipelines/6f17d9b9-8874-4c5b-9a54-eca796841abc",
+  "displayName": "AWS_Filter2",
+  "description": "AWS_WAF log volume reduction",
+  "processors": [
+    {
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"(?s:httpSourceName\\\"\\\\s*:\\\\s*\\\"ALB\\\".*?\\\"name\\\"\\\\s*:\\\\s*\\\"(?i:user-agent)\\\"\\\\s*,\\\\s*\\\"value\\\"\\\\s*:\\\\s*\\\"(?:ELB-HealthChecker\\\\/\\\\d+(?:\\\\.\\\\d+)*|Blackbox Exporter\\\\/\\\\d+(?:\\\\.\\\\d+)*|Grafana\\\\/\\\\d+(?:\\\\.\\\\d+)*|Java-EurekaClient(?:-Replication)?\\\\/v\\\\d+(?:\\\\.\\\\d+)*))\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    }
+  ],
+  "streams": [
+    { "feed": "4cc610fa-2e49-467b-a573-00a1cdcd6480" }
+  ],
+  "customMetadata": [
+    {
+      "key": "bindplaneURL",
+      "value": "https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines/6f17d9b9-8874-4c5b-9a54-eca796841abc"
+    }
+  ],
+  "createTime": "2026-08-17T17:35:22.869279Z",
+  "updateTime": "2026-08-20T15:38:17.834943Z"
+}
