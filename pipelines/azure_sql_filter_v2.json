@@ -1,0 +1,70 @@
+{
+  "_comment": "AZURE_SQL drop-only filter set. Every processor is a DROP rule mapped to a line item in the governance decision paper (Filtering of AZURE_SQL, 20/08/2026). No allowlist/keep inversion is used.",
+  "_governance": "Decision: FILTER HEAVILY. Priority P2. Target retain ~20% of 34.526 GB/day.",
+  "_updates": "Pipeline id 9c7b26bd-11f3-432f-a7df-a30b56a8955f (supersedes the 2-rule live definition in azure_sql_filter.json).",
+  "_ordering": "Cheapest/broadest drops first. A record dropped by an earlier rule never reaches later rules.",
+  "displayName": "Azure_SQL_Filter",
+  "description": "Azure SQL Log - heavy filtering per governance decision 20/08/2026",
+  "processors": [
+    {
+      "_rule": "D1 — operational, performance and health telemetry categories",
+      "_maps_to": "7.5/12.3: Health telemetry; Performance monitoring activity",
+      "_grounded": "Keys on 'category', proven present in this feed (live filter already matches it).",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"category\\\":\\\\s*\\\"(DatabaseWaitStatistics|QueryStoreWaitStatistics|QueryStoreRuntimeStatistics|ResourceUsageStats|Timeouts|AutomaticTuning|WorkflowRuntime|Blocks|Deadlocks|SQLInsights|DatabaseInstances)\\\"\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "D2 — SQL audit batch-start markers (the paired COMPLETED event carries the signal)",
+      "_maps_to": "7.5/12.3: Expected database application transactions",
+      "_grounded": "Carried forward unchanged from the live filter.",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"BATCH STARTED\\\"\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "D3 — successful routine DML (SELECT / INSERT / UPDATE / DELETE)",
+      "_maps_to": "7.5/12.3: Routine SELECT, INSERT, UPDATE, DELETE; Normal application-generated database activity; Routine business transactions",
+      "_guard": "Only drops when succeeded=true, so FAILED statements (probing, permission denials) still reach SecOps.",
+      "_confirm": "Confirm the 'statement' field name in this feed's parsed events before deploying.",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"(BATCH COMPLETED|RPC COMPLETED|TRANSACTION COMMITTED)\\\"\") and IsMatch(body, \"(?i)\\\"statement\\\":\\\\s*\\\"\\\\s*(SELECT|INSERT|UPDATE|DELETE|MERGE)\\\\s\") and IsMatch(body, \"\\\"succeeded\\\":\\\\s*\\\"?true\\\"?\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "D4 — successful routine connections / authentications",
+      "_maps_to": "7.5/12.3: Successful routine connections",
+      "_guard": "Only successes are dropped. LOGIN FAILED / DATABASE AUTHENTICATION FAILED are untouched and continue to SecOps.",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"(DATABASE AUTHENTICATION SUCCEEDED|LOGIN SUCCEEDED|CONNECTION CLOSED)\\\"\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    }
+  ],
+  "streams": [
+    {
+      "logType": "AZURE_SQL"
+    }
+  ],
+  "customMetadata": [
+    {
+      "key": "bindplaneURL",
+      "value": "https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines/9c7b26bd-11f3-432f-a7df-a30b56a8955f"
+    },
+    {
+      "key": "governanceDecision",
+      "value": "AZURE_SQL-FILTER-HEAVILY-20260820"
+    }
+  ]
+}
