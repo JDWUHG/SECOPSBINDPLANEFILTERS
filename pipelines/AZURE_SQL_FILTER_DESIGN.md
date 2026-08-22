@@ -27,8 +27,10 @@
 |---|---|---|---|
 | **R1** | 11 diagnostic/performance/health categories (extends live 6) | **Zero** | Grounded — `category` proven present |
 | **R2** | `BATCH STARTED` markers | **Zero** | Grounded — already live |
-| **R3** | Azure Monitor platform metrics records | **Zero** | Metrics-shape fingerprint; fails safe if absent |
+| **R3** | Azure Monitor platform metrics records | **Zero** | Metrics-shape fingerprint; fails safe if absent. **DEPLOYED & VERIFIED** 2026-08-22T08:26:27 — byte-for-byte match confirmed via pipeline JSON export. |
 | **R4** | *Optional* — session logout/teardown churn | Near-zero | Confirm `action_name` value first |
+
+> **Deployment log:** R3 took three attempts to land correctly — two earlier saves silently no-op'd (a stray trailing newline, then a stray trailing escaped quote), both of which failed *safe* (dropped nothing) rather than unsafe. Lesson: after pasting a regex into the UI box, click away or Tab rather than pressing Enter, and always verify via a pipeline JSON export rather than assuming the UI saved exactly what was typed. R1 (11-category superset) is next — verifying now.
 
 **Deliberately excluded:** routine-DML drop (proposed D3) and successful-authentication drop (proposed D4). Rationale in *Security assessment* below.
 
