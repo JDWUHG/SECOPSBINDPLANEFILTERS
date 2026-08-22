@@ -53,14 +53,34 @@ jq -r '
 ' "$OUT/destinations.json" 2>/dev/null || echo "  (none / unable to parse)"
 
 echo
-echo "=== Filter / batch / standardization processors ==="
+echo "=== Standalone processors & Blueprint bundles ==="
+# BindPlane stores reusable processing as top-level Processor resources OR as
+# Blueprint/processor_bundle resources that contain sub-processors. Report both,
+# and list the filter/dedup sub-processors inside bundles (the real drop rules).
 jq -r '
   (.processors // .items // [])[]
-  | . as $p
-  | ($p.spec.type // "" | ascii_downcase) as $t
-  | select($t | test("filter|batch|standardization|dedup|sample|transform"))
-  | "  - " + ($p.metadata.name // "?") + "  (type=" + ($p.spec.type // "?") + ")"
+  | .metadata.name as $name
+  | (.spec.type // "?") as $t
+  | "  - " + $name + "  (type=" + $t + ")"
+    + ( if (.spec.processors // []) | length > 0
+        then "\n" + ( [ (.spec.processors[]
+              | "      · " + (.type // "?") + "  — " + (.displayName // "")) ] | join("\n") )
+        else "" end )
 ' "$OUT/processors.json" 2>/dev/null || echo "  (none / unable to parse)"
+
+echo
+echo "=== Inline processors attached to SecOps destinations inside configurations ==="
+# Filtering is frequently defined inline on the destination within a config,
+# not as a standalone resource. Surface those so the schedule is complete.
+jq -r '
+  (.configurations // .items // [])[]
+  | .metadata.name as $cfg
+  | ( (.spec.destinations // [])[]
+      | select((.name // "" ) | test("secops|chronicle|ptmkc|test"; "i"))
+      | .name as $dest
+      | ( (.processors // [])[]?
+          | "  - [config " + $cfg + " → dest " + ($dest // "?") + "] " + (.type // "?") ) )
+' "$OUT/configurations.json" 2>/dev/null || echo "  (none / unable to parse)"
 
 echo
 echo "Snapshot written to: $OUT"
