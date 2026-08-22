@@ -1,5 +1,13 @@
 # AZURE_SQL — drop filter set
 
+> ## ⛔ STATUS: NOT DEPLOYED — FOR REVIEW ONLY
+> These definitions have **not** been applied to any environment. The live pipeline
+> `9c7b26bd-11f3-432f-a7df-a30b56a8955f` is **unchanged** and still runs the original
+> 2 rules in [`azure_sql_filter.json`](./azure_sql_filter.json).
+>
+> Do not apply until: (a) this design is approved, (b) the §7.6 pre-implementation
+> validation is complete, and (c) the open decisions below are closed.
+
 **Governance basis:** Decision Paper *Filtering of AZURE_SQL*, 20/08/2026, issued & approved by Johann de Winnaar. Decision **FILTER HEAVILY**, Priority **P2**, implementation point **BindPlane**.
 
 **Targets (§2, §12.1):** retain ~20% of ≈34.526 GB/day → ≈6.905 GB/day; save ≈27.621 GB/day ≈ 0.83 TB/month ≈ 10.08 TB/year.
