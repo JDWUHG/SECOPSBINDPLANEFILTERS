@@ -49,6 +49,31 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 
 ---
 
+## Volume baseline (BL-02 measurement anchor)
+
+Captured from the SecOps "Log Volume (GB) by Log Type — Last 30 Days" report,
+window **24 Jul → 22 Aug 2026 09:42**. This is the **BEFORE** baseline: today's filters
+(CloudTrail A+B, Azure SQL exclude+redact, Zscaler Z1) went live only in the final ~1–2h
+of this window, so their impact is NOT reflected here yet. Re-measure the daily figure in
+24–48h and compare against the daily-average column below.
+
+| Log type | 30-day total GB | Daily avg GB | Events (30d) | Touched today? |
+|----------|----------------:|-------------:|-------------:|----------------|
+| AWS_CLOUDTRAIL | 6400.25 | **213.34** | 3,516,895,644 | ✅ Rules A+B |
+| AZURE_SQL | 6150.23 | **205.01** | 2,096,953,617 | ✅ exclude R1/R3 + redaction |
+| ZSCALER_WEBPROXY | 2840.63 | **94.69** | 2,204,620,828 | ✅ Rule Z1 (Microsoft only so far) |
+| AWS_WAF | 1953.45 | 65.12 | 854,900,072 | — (AWS_Filter2, not yet reviewed) |
+| AZURE_ACTIVITY | 842.41 | 28.08 | 410,974,487 | — |
+| MICROSOFT_INSIGHTS_COMPONENTS | 816.13 | 27.20 | 196,123,987 | ✅ **removed 21 Aug** — now 0 GB/day |
+| AZURE_GATEWAY | 814.02 | 27.13 | 404,780,203 | — |
+
+> Notes:
+> - **MICROSOFT_INSIGHTS_COMPONENTS is already at 0 GB / 0 events today** — confirmed as a
+>   deliberate removal on 2026-08-21 (not a broken feed). ~27 GB/day already banked.
+> - The three filters deployed today target the **top 3 log types by volume** — the changes
+>   were made exactly where the volume is.
+> - Column values are: 30-day total / daily average / event count, as read from the report.
+
 ## Backlog / follow-up checks
 
 | ID | Item | Why it matters | Status |
@@ -57,7 +82,7 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 | BL-02 | **Measure actual AZURE_SQL volume reduction** from the R1+R3 exclude filters and the redact processor. Break down by `category`, and within `SQLSecurityAuditEvents` by `action_name` + average event size, to size the real saving and decide if further work (R4, dedup, asset-scoped filtering) is worth pursuing. | Nothing has been measured yet — all reduction estimates so far are structural, not observed. | ⏳ Open |
 | BL-03 | **Confirm no live SecOps detection depends on `Blocks` or `Deadlocks`** (Azure SQL categories added in R1). One-line confirmation needed from Cyber Defence. | Gate on R1 that was never formally closed before deploying. | ⏳ Open |
 | BL-04 | **Decide on `Errors` category** — drop as operational noise, or retain for investigation value (failed statements, injection attempts)? Currently retained (not dropped) by default. | Open decision from the governance decision paper, not yet actioned. | ⏳ Open |
-| BL-05 | **Apply the same zero-evidentiary-cost review to the other 4 filters** (`AWS_Filter`, `AWS_Filter2`, `Microsoft_Insights_Components`, `ZSCALER_Filter`) — likely similar "free" noise-category wins available. | Not yet started; rules for these 4 are not even captured yet (see "Detailed rules" table above). | ⏳ Open |
+| BL-05 | **Apply the same zero-evidentiary-cost review to remaining filters.** Done: AWS_Filter (CloudTrail), ZSCALER_Filter (Microsoft rule only). Remaining: **AWS_Filter2 (AWS_WAF, ~65 GB/day — next biggest untouched)**, Microsoft_Insights_Components (already removed 21 Aug). Zscaler Z2–Z4 (Google/Apple/CDN) still parked. | Partially done. AWS_WAF is the largest remaining untouched source. | ⏳ In progress |
 | BL-07 | **Zscaler: add a "drop all blocked" rule.** Owner confirmed blocked traffic is reviewed in the Zscaler console and needn't be in SecOps. Needs one real Zscaler event to confirm the exact `action` value for blocked (`Blocked`/`Denied`/etc.) before building. | Biggest remaining Zscaler saving after the trusted-domain drops; safe once the value is confirmed. | ⏳ Open |
 | BL-08 | **Zscaler: confirm whether more than one Zscaler feed** flows into SecOps. The current filter is scoped to a single feed (`02d280ff-...`); other feeds would need the same rules. | Filters scoped per-feed; other feeds get no reduction until covered. | ⏳ Open |
 | BL-06 | **Rotate the BindPlane API keys** used during this session (both the original `bp_...` key and the `bps_...` Google SecOps UK key) — they were shared in chat and should be treated as exposed. | Basic credential hygiene. | ⏳ Open |
