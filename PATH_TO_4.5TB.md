@@ -2,20 +2,26 @@
 
 **Target:** 4.5 TB/month = **~151 GB/day**.
 
-## Where we are
+## Where we are (updated from the full daily time-series)
+
+Baseline pattern from daily totals 01 Jul–21 Aug 2026:
+- Weekday avg **~815 GB/day**, Weekend avg **~401 GB/day**, Blended **~703 GB/day = ~20.9 TB/month**.
+
+Like-for-like signal: **Sat 22 Aug tracked ~63% below a normal Saturday** (60.8 GB by ~09:42,
+projecting ~150 GB vs a typical ~401 GB Saturday). Saturday-vs-Saturday, so a fair comparison.
 
 | Point | Volume | TB/month |
 |-------|--------|----------|
-| **Baseline (before any work)** | ~710 GB/day | **~21.1 TB** |
+| **Baseline (before any work)** | ~703 GB/day | **~20.9 TB** |
 | **Target** | ~151 GB/day | **4.5 TB** |
-| **Required reduction** | — | **~79%** |
-| **After today (partial-Saturday estimate)** | ~197 GB/day | ~5.9 TB |
-| **After today (realistic weekday estimate)** | ~260–395 GB/day | **~8–12 TB** |
+| **Required reduction** | — | **~78%** |
+| **After today (−63%, projected)** | weekday ~305 / weekend ~150 → blended ~261 GB/day | **~7.8 TB** |
 
-**Status: major progress (~21 → ~6–10 TB/month), but NOT yet at 4.5 TB.**
-Roughly half to two-thirds of the gap is closed. Confirm the true figure on a **full weekday**
-before deciding how much more is needed — today's snapshot was a partial weekend morning and
-under-represents a normal day.
+**Status: ~63% cut achieved (≈21 → ≈7.8 TB/month) — about two-thirds of the way to target.**
+Confirm with the first full post-change weekday, but the Saturday-vs-Saturday comparison is
+already a solid like-for-like read.
+
+**Gap to target: ~3.3 TB/month (~110 GB/day) still to remove.**
 
 ## Remaining gap
 
@@ -32,10 +38,14 @@ To reach 4.5 TB from a realistic ~8 TB weekday level, need to remove **~another 
 
 **Rough additional safe saving available: ~61 GB/day ≈ ~1.8 TB/month.**
 
-## The honest arithmetic
+## The honest arithmetic (firmed up)
 
-- Safe wins above get you roughly **~1.8 TB/month** further → likely lands you around **~6 TB/month** on a weekday.
-- **That may still be short of 4.5 TB.** Closing the final gap likely requires the **deferred, higher-risk decisions** we consciously declined earlier, each needing sign-off:
+- Current projected: **~7.8 TB/month**. Safe remaining wins total **~1.8 TB/month**.
+- Safe wins → land around **~6 TB/month**. **Target is 4.5 TB → still ~1.5 TB/month short.**
+- **Safe, zero-detection-cost filtering alone will NOT reach 4.5 TB.** This is the honest maths:
+  4.5 TB is a ~78% cut; safe filtering gets ~71%.
+- Closing the final ~1.5 TB requires the **deferred, higher-risk decisions** we consciously
+  declined earlier, each needing sign-off:
   - More aggressive AZURE_SQL (e.g. dropping successful routine DML — needs security sign-off; loses exfil/insider visibility).
   - Zscaler "drop allowed" posture (needs sign-off; loses hunt capability on allowed traffic).
   - Reducing retained CloudTrail writes further.
