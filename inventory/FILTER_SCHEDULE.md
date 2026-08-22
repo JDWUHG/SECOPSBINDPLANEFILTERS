@@ -100,6 +100,16 @@ Projected-to-24h (partial ×24/9.7) vs baseline daily average:
 > - **Confirm on a full weekday** (e.g. compare next Monday vs a typical pre-change Monday) to get
 >   the true, un-inflated numbers.
 
+## Trend status (as of 2026-08-22)
+
+**Heading clearly in the right direction.** Multi-day ramp-down visible in daily totals as filters
+were deployed (Fri 21 Aug already ~26% below a normal weekday; Sat 22 Aug ~63% below a normal
+Saturday). Today's biggest changes (Azure SQL exclude+redact, CloudTrail A+B) went live only in the
+last ~1–2h, so today's figure UNDER-counts the true impact — the first full post-change weekday is
+the definitive read. Projected new run-rate ~7.8 TB/month vs ~21 TB baseline; target 4.5 TB.
+
+**Next actions:** (1) BL-09 deploy Zscaler Z2–Z4 on 23 Aug; (2) BL-02 confirm on first full weekday.
+
 ## Backlog / follow-up checks
 
 | ID | Item | Why it matters | Status |
@@ -109,6 +119,7 @@ Projected-to-24h (partial ×24/9.7) vs baseline daily average:
 | BL-03 | **Confirm no live SecOps detection depends on `Blocks` or `Deadlocks`** (Azure SQL categories added in R1). One-line confirmation needed from Cyber Defence. | Gate on R1 that was never formally closed before deploying. | ⏳ Open |
 | BL-04 | **Decide on `Errors` category** — drop as operational noise, or retain for investigation value (failed statements, injection attempts)? Currently retained (not dropped) by default. | Open decision from the governance decision paper, not yet actioned. | ⏳ Open |
 | BL-05 | **Apply the same zero-evidentiary-cost review to remaining filters.** Done: AWS_Filter (CloudTrail), ZSCALER_Filter (Microsoft rule only). Remaining: **AWS_Filter2 (AWS_WAF, ~65 GB/day — next biggest untouched)**, Microsoft_Insights_Components (already removed 21 Aug). Zscaler Z2–Z4 (Google/Apple/CDN) still parked. | Partially done. AWS_WAF is the largest remaining untouched source. | ⏳ In progress |
+| BL-09 | **Zscaler: deploy the parked rules Z2, Z3, Z4** (drop allowed + no-threat browsing to Google / Apple / major CDNs). Built, safety-tested, and paste-ready in `../pipelines/DEPLOY_ZSCALER.md`. Scheduled for **2026-08-23**. Add each as a "Filter by Regex" processor (Action=Exclude, Match=Body, Field empty), one at a time, then Rollout and verify via JSON export. Expected to raise Zscaler reduction well beyond the current ~26% (only Z1/Microsoft is live). ~1 TB/month toward the 4.5 TB target. | **QUEUED for 23 Aug.** All content ready in DEPLOY_ZSCALER.md. | ⏳ Queued |
 | BL-07 | **Zscaler: add a "drop all blocked" rule.** Owner confirmed blocked traffic is reviewed in the Zscaler console and needn't be in SecOps. Needs one real Zscaler event to confirm the exact `action` value for blocked (`Blocked`/`Denied`/etc.) before building. | Biggest remaining Zscaler saving after the trusted-domain drops; safe once the value is confirmed. | ⏳ Open |
 | BL-08 | **Zscaler: confirm whether more than one Zscaler feed** flows into SecOps. The current filter is scoped to a single feed (`02d280ff-...`); other feeds would need the same rules. | Filters scoped per-feed; other feeds get no reduction until covered. | ⏳ Open |
 | BL-06 | **Rotate the BindPlane API keys** used during this session (both the original `bp_...` key and the `bps_...` Google SecOps UK key) — they were shared in chat and should be treated as exposed. | Basic credential hygiene. | ⏳ Open |
