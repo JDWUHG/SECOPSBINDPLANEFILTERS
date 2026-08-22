@@ -129,6 +129,13 @@ Cost: Near-zero, NOT zero. Logons are retained in full - only teardown is droppe
 
 ---
 
+## ⚠️ Editing is NOT deploying
+
+Saving a processor edit does **not** push it to SecOps. You must click **Rollout** (/ Sync).
+Confirmed in practice on 22/08/2026: after adding a processor, the Chronicle-side
+`updateTime` stayed at the old value until Rollout was clicked, at which point it moved
+immediately. If `updateTime` hasn't changed, the rollout hasn't happened.
+
 ## Steps
 
 1. Open the pipeline URL, **export/screenshot the current definition** (rollback).
