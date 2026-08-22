@@ -49,6 +49,17 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 
 ---
 
+## Backlog / follow-up checks
+
+| ID | Item | Why it matters | Status |
+|----|------|-----------------|--------|
+| BL-01 | **Verify `redact_sensitive_data` output on Azure_SQL_Filter.** Confirm the custom rule `"statement":"[^"]*"` redacts only the SQL text value, not the surrounding `"statement":` key label too. Check a live/recent AZURE_SQL log entry in BindPlane/SecOps. Either outcome is safe (no data leak either way) — but if the key label is also redacted, downstream parsing/readability could be affected. See `../pipelines/AZURE_SQL_FILTER_DESIGN.md` for the two possible outcomes to look for. | Deployed 2026-08-22T09:00:02 without this check due to time constraints. | ⏳ Open |
+| BL-02 | **Measure actual AZURE_SQL volume reduction** from the R1+R3 exclude filters and the redact processor. Break down by `category`, and within `SQLSecurityAuditEvents` by `action_name` + average event size, to size the real saving and decide if further work (R4, dedup, asset-scoped filtering) is worth pursuing. | Nothing has been measured yet — all reduction estimates so far are structural, not observed. | ⏳ Open |
+| BL-03 | **Confirm no live SecOps detection depends on `Blocks` or `Deadlocks`** (Azure SQL categories added in R1). One-line confirmation needed from Cyber Defence. | Gate on R1 that was never formally closed before deploying. | ⏳ Open |
+| BL-04 | **Decide on `Errors` category** — drop as operational noise, or retain for investigation value (failed statements, injection attempts)? Currently retained (not dropped) by default. | Open decision from the governance decision paper, not yet actioned. | ⏳ Open |
+| BL-05 | **Apply the same zero-evidentiary-cost review to the other 4 filters** (`AWS_Filter`, `AWS_Filter2`, `Microsoft_Insights_Components`, `ZSCALER_Filter`) — likely similar "free" noise-category wins available. | Not yet started; rules for these 4 are not even captured yet (see "Detailed rules" table above). | ⏳ Open |
+| BL-06 | **Rotate the BindPlane API keys** used during this session (both the original `bp_...` key and the `bps_...` Google SecOps UK key) — they were shared in chat and should be treated as exposed. | Basic credential hygiene. | ⏳ Open |
+
 ## 2. Other SecOps processing on the instance (context)
 
 ### Reusable Blueprint bundles (library)

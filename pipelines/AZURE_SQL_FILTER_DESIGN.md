@@ -1,11 +1,33 @@
 # AZURE_SQL — deployable filter set + path to target
 
-> ## ✅ STATUS: R1–R3 DEPLOYED & VERIFIED — R4 not yet added
-> Live pipeline `9c7b26bd-11f3-432f-a7df-a30b56a8955f` now runs **3 processors**
-> (R1, R2, R3 below), confirmed byte-for-byte correct via pipeline JSON export
-> as of `updateTime = 2026-08-22T08:37:50.907487Z`. R4 (logout/teardown, optional)
-> has **not** been added — still needs its `action_name` value confirmed first.
-> Baseline (previous 2-rule state) preserved in [`azure_sql_filter.json`](./azure_sql_filter.json).
+> ## ✅ STATUS: R1–R3 + redaction processor DEPLOYED. R1-R3 VERIFIED. Redaction NOT YET VERIFIED.
+> Live pipeline `9c7b26bd-11f3-432f-a7df-a30b56a8955f` now runs **4 processors**:
+> R1/R2/R3 (exclude filters, confirmed byte-for-byte correct as of `updateTime = 2026-08-22T08:37:50`),
+> plus a `redact_sensitive_data` processor added at `updateTime = 2026-08-22T09:00:02`
+> containing all default preset rules (credit card, email, etc.) plus a custom rule
+> targeting `"statement":"[^"]*"` to shrink the SQL text in each event.
+>
+> **The redaction processor's OUTPUT has NOT been checked against a live event —
+> see "Redaction verification needed" below (tracked as BL-01 in FILTER_SCHEDULE.md).**
+> R4 (logout/teardown, optional) has **not** been added.
+> Baseline (original 2-rule state) preserved in [`azure_sql_filter.json`](./azure_sql_filter.json).
+> Current full live state captured in [`azure_sql_filter_LIVE_20260822.json`](./azure_sql_filter_LIVE_20260822.json).
+
+## Redaction verification needed (BL-01)
+
+The custom rule `"statement":"[^"]*"` is designed to redact only the SQL text value inside
+the `statement` field. Before trusting this in production, check ONE real AZURE_SQL log
+entry and compare against these two possible outcomes:
+
+- **✅ Intended:** `"statement":"***********************"` — only the text between the quotes
+  is replaced with asterisks; the `"statement":` key label and surrounding JSON are untouched.
+- **⚠️ Needs adjustment:** `*****************************` — the whole match, including the
+  key label, is replaced. Not a security problem (nothing leaks either way), but may make the
+  field harder for downstream parsing/readability. If this happens, narrow the rule to redact
+  only the capture group value once BindPlane's exact replace-scope behaviour is confirmed.
+
+How to check: find a recent AZURE_SQL entry in BindPlane's log preview (if available) or in
+SecOps directly, and look at what the `statement` portion of the body now looks like.
 
 **Governance basis:** Decision Paper *Filtering of AZURE_SQL*, 20/08/2026 (Johann de Winnaar). FILTER HEAVILY, P2, implementation point BindPlane. Target: retain ~20% of ≈34.526 GB/day.
 

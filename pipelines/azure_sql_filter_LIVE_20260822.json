@@ -1,6 +1,7 @@
 {
-  "_status": "LIVE — VERIFIED byte-for-byte correct via pipeline JSON export at updateTime below. This is the confirmed production state, not a proposal.",
-  "_verification": "Checked programmatically against azure_sql_filter_v2.json: exactly 3 processors present, R1/R2/R3 each exact-string-match, category list is the precise 11-item set, no extra/unexpected processors, nothing missing.",
+  "_status": "LIVE — captured from pipeline JSON export at the updateTime below.",
+  "_verification": "Processors 1-3 (exclude filters) confirmed byte-for-byte correct against spec on 2026-08-22T08:37:50. Processor 4 (redact_sensitive_data) added 2026-08-22T09:00:02 - NOT YET VERIFIED against a live event. See BL-01 in inventory/FILTER_SCHEDULE.md.",
+  "_note_on_schema": "The actual wire format for this processor is 'redactProcessor' with 'blockedValues' (list of regex, includes the built-in presets rendered as regex plus our custom rule appended last), 'allowAllKeys': true, 'hashFunction': 'HASH_FUNCTION_NONE' (censor with asterisks), 'redactAllTypes': true. This differs from the GraphQL parameter-form field names (custom_rules, redaction_strategy, etc.) - those are the UI form fields; this is the compiled resource.",
   "name": "projects/721279881207/locations/europe-west2/instances/c98f7d82-a2a4-45a1-a96a-a4dee6cf39fd/logProcessingPipelines/9c7b26bd-11f3-432f-a7df-a30b56a8955f",
   "displayName": "Azure_SQL_Filter",
   "description": "Azure SQL Log",
@@ -28,6 +29,30 @@
         ],
         "errorMode": "IGNORE"
       }
+    },
+    {
+      "redactProcessor": {
+        "blockedValues": [
+          "\\b[A-Z]{2}\\d{2}(?: ?[A-Z0-9]){11,31}(?:\\s[A-Z0-9])*\\b",
+          "\\b([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b",
+          "\\b(?:3[47][ -]?\\d{4}[ -]?\\d{6}[ -]?\\d{3}|4\\d{3}(?:[ -]?\\d{4}){3}|5[1-5]\\d{2}(?:[ -]?\\d{4}){3}|6(?:011|5\\d{2})(?:[ -]?\\d{4}){3}|35(?:2[89]|[3-8]\\d)(?:[ -]?\\d{4}){3}|3(?:0[0-5]|[68]\\d)(?:[ -]?\\d){11}|62(?:[ -]?\\d){14,17})\\b",
+          "\\b(?:(?:19|20)?\\d{2}[-/])?(?:0?[1-9]|1[0-2])[-/](?:0?[1-9]|[12]\\d|3[01])(?:[-/](?:19|20)?\\d{2})?\\b",
+          "\\b[a-zA-Z0-9._/\\+\\-—|]+@[A-Za-z0-9\\-—|]+\\.[a-zA-Z|]{2,6}\\b",
+          "\\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\b",
+          "\\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\\b",
+          "\\b((\\+|\\b)[1l][\\-\\. ])?\\(?\\b[\\dOlZSB]{3,5}([\\-\\. ]|\\) ?)[\\dOlZSB]{3}[\\-\\. ][\\dOlZSB]{4}\\b",
+          "\\+[1-9]\\d{0,2}(?:[-.\\s]?\\(?\\d+\\)?(?:[-.\\s]?\\d+)*)\\b",
+          "\\b\\d{3}[- ]\\d{2}[- ]\\d{4}\\b",
+          "\\b[A-Z][A-Za-z\\s\\.]+,\\s{0,1}[A-Z]{2}\\b",
+          "\\b\\d+\\s[A-z]+\\s[A-z]+(\\s[A-z]+)?\\s*\\d*\\b",
+          "\\b\\d{5}(?:[-\\s]\\d{4})?\\b",
+          "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\\b",
+          "\"statement\":\"[^\"]*\""
+        ],
+        "allowAllKeys": true,
+        "hashFunction": "HASH_FUNCTION_NONE",
+        "redactAllTypes": true
+      }
     }
   ],
   "streams": [
@@ -42,5 +67,5 @@
     }
   ],
   "createTime": "2026-08-18T14:18:55.097167Z",
-  "updateTime": "2026-08-22T08:37:50.907487Z"
+  "updateTime": "2026-08-22T09:00:02.061967Z"
 }
