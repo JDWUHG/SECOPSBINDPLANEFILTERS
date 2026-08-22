@@ -35,10 +35,17 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 | Microsoft_Insights_Components | `54d1435e-1c44-44f3-a581-ee7ff2a83448` |
 | ZSCALER_Filter | `7d023b21-3b13-4580-9174-a86b14dace06` |
 
-> Notes:
-> - `AWS_Filter`, `AWS_Filter2`, `ZSCALER_Filter` have **no `logTypes` set** on the pipeline summary — worth confirming the target log type is applied inside the pipeline, otherwise routing/parsing may fall back.
-> - `Microsoft_Insights_Components` has **no description** — candidate for a one-line description for consistency.
-> - The detailed drop/keep rule logic for each pipeline is not exposed on the summary object; retrieving it needs the per-pipeline configuration (next step — see below).
+### Detailed rules
+
+| Filter | Detailed rules doc |
+|--------|--------------------|
+| Azure_SQL_Filter | [`../pipelines/AZURE_SQL_FILTER_RULES.md`](../pipelines/AZURE_SQL_FILTER_RULES.md) (raw: `../pipelines/azure_sql_filter.json`) |
+| AWS_Filter | _(not yet captured)_ |
+| AWS_Filter2 | _(not yet captured)_ |
+| Microsoft_Insights_Components | _(not yet captured)_ |
+| ZSCALER_Filter | _(not yet captured)_ |
+
+> **Important — where the rules live:** these SecOps Pipelines are **Google SecOps `logProcessingPipelines`** (Chronicle API resources) authored via BindPlane's SecOps UI. They are NOT BindPlane configuration/processor resources, so BindPlane's REST/GraphQL read APIs do **not** return the rule bodies (only the summary list). To capture a pipeline's detailed rules, export its definition from the SecOps side (the `logProcessingPipelines` API / UI export) — that JSON is the authoritative source.
 
 ---
 

@@ -1,0 +1,36 @@
+{
+  "name": "projects/721279881207/locations/europe-west2/instances/c98f7d82-a2a4-45a1-a96a-a4dee6cf39fd/logProcessingPipelines/9c7b26bd-11f3-432f-a7df-a30b56a8955f",
+  "displayName": "Azure_SQL_Filter",
+  "description": "Azure SQL Log",
+  "processors": [
+    {
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"category\\\":\\\\s*\\\"(DatabaseWaitStatistics|QueryStoreWaitStatistics|ResourceUsageStats|Timeouts|AutomaticTuning|WorkflowRuntime)\\\"\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"BATCH STARTED\\\"\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    }
+  ],
+  "streams": [
+    {
+      "logType": "AZURE_SQL"
+    }
+  ],
+  "customMetadata": [
+    {
+      "key": "bindplaneURL",
+      "value": "https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines/9c7b26bd-11f3-432f-a7df-a30b56a8955f"
+    }
+  ],
+  "createTime": "2026-08-18T14:18:55.097167Z",
+  "updateTime": "2026-08-20T10:35:01.605343Z"
+}
