@@ -1,89 +1,71 @@
 # Google SecOps — Filter Schedule
 
-The **single register** of every filter/processor in scope for Google SecOps ingestion: what exists today, what is planned, and the current deployment state of each.
+The **single register** of every filter/pipeline in scope for Google SecOps ingestion.
 
-- **Existing filters** are reconciled against `snapshots/` exports (see `export-filters.sh`).
-- **New filters** are added here as `planned` before their spec is written, then moved to `built` → `deployed`.
+- **SecOps Pipelines** (the `/secops-pipelines` view) are the named volume-reduction filters — this is the primary list you asked for.
+- Reconciled from the live instance via `export-filters.sh` (REST for processors/configs + GraphQL `secOpsPipelineSummaries` for the SecOps Pipelines).
 
-> This document is the source of truth for **review**. The live BindPlane instance is the source of truth for **runtime**. Keep them reconciled after every apply.
+> Source of truth for **review** = this file. Source of truth for **runtime** = the live instance. Reconcile after every change.
 
-**Last reconciled:** 2026-08-22 (snapshot `20260822T070416Z`), instance `https://app.bindplane.com`.
-
----
-
-**Scope:** This schedule covers **SecOps pipelines only**. Non-SecOps configs/destinations (e.g. `test` → `s`/`dev_null`) are intentionally excluded.
-
-## Environment summary (SecOps pipelines)
-
-| Item | Value |
-|---|---|
-| SecOps customer ID | `c98f7d82-a2a4-45a1-a96a-a4dee6cf39fd` |
-| GCP project number | `721279881207` |
-| Region | `europe-west2` |
-| Protocol / API | `https` (Chronicle), api_version `v1alpha` |
-| **Live SecOps pipeline** | **`OptumUKWinEvtLog` → `ptmkc`** (namespace `OptumUK`) — the only SecOps config with a source feeding a Chronicle destination |
-| SecOps destination `ptmkc` | in use by `OptumUKWinEvtLog`; namespace `OptumUK` |
-| SecOps destination `test` | defined but **not attached to any live config** — parked, not a real pipeline |
-| Source in the live pipeline | `windowsevents_v3` (+ `bindplane-agent`) |
-
-> `credentials` / `credentials_file` on the SecOps destination are secrets and are intentionally NOT recorded here.
+**Last reconciled:** 2026-08-22 (snapshot `20260822T072129Z`)
+**Instance:** `https://app.bindplane.com`
+**Project:** Google SecOps UK (`01KC4W80ECMCJ8QJ9AG85S9S5J`)
 
 ---
 
-## Legend
+## 1. SecOps Pipelines — named volume-reduction filters
 
-| Field | Meaning |
-|---|---|
-| **ID** | Stable short id / resource or sub-processor name. |
-| **Form** | `bundle` (Blueprint/processor_bundle library resource) · `inline` (processor on a destination inside a config) · `standalone` (top-level Processor resource). |
-| **Type** | BindPlane processor type. |
-| **Attached to** | Which config/destination actually runs it (a bundle in the library is not "live" until attached). |
-| **Purpose** | One line. |
-| **Status** | `existing-live` (attached & running) · `existing-library` (defined but not attached) · `planned` · `built` · `deployed` · `deprecated`. |
+> Source: GraphQL `secOpsPipelineSummaries` (the `/secops-pipelines` UI page). Times are UTC.
 
----
+| Filter | Purpose | Log type(s) | Created | Last modified |
+|--------|---------|-------------|---------|---------------|
+| **AWS_Filter** | CloudTrail log volume reduction | _(none set)_ | 2026-08-14 | 2026-08-19 |
+| **AWS_Filter2** | AWS WAF log volume reduction | _(none set)_ | 2026-08-17 | 2026-08-20 |
+| **Azure_SQL_Filter** | Azure SQL log | `AZURE_SQL` | 2026-08-18 | 2026-08-20 |
+| **Microsoft_Insights_Components** | _(no description)_ | `MICROSOFT_INSIGHTS_COMPONENTS` | 2026-08-20 | 2026-08-20 |
+| **ZSCALER_Filter** | Zscaler Webproxy filter | _(none set)_ | 2026-08-21 | 2026-08-21 |
 
-## Existing filters (from instance)
+**Pipeline IDs (for API/automation):**
 
-### A. Reusable Blueprint bundles (library — reduce SecOps ingest volume)
+| Filter | ID |
+|--------|-----|
+| AWS_Filter | `c072e6b7-0690-419c-82ca-901b7ab2bc3f` |
+| AWS_Filter2 | `6f17d9b9-8874-4c5b-9a54-eca796841abc` |
+| Azure_SQL_Filter | `9c7b26bd-11f3-432f-a7df-a30b56a8955f` |
+| Microsoft_Insights_Components | `54d1435e-1c44-44f3-a581-ee7ff2a83448` |
+| ZSCALER_Filter | `7d023b21-3b13-4580-9174-a86b14dace06` |
 
-> These are defined as `processor_bundle` / `Blueprint` resources. **Verify whether each is actually attached to a live configuration** — as of this snapshot neither bundle appears attached to `OptumUKWinEvtLog` (the only live SecOps config), so they are library-only until wired in.
-
-| ID | Form | Type | Sub-steps | Purpose | Status |
-|----|------|------|-----------|---------|--------|
-| `crowdstrike-falcon-google-secops-volume-reduction` | bundle | processor_bundle | parse_json → 3× filter-by-condition → delete_fields → dedup → delete_empty → SecOps standardization | Cut CrowdStrike Falcon FDR volume into SecOps | existing-library |
-| `reduce-cloudtrail-logs` | bundle | processor_bundle | parse_json → filter-by-condition → delete_empty | Drop read-only AWS CloudTrail noise | existing-library |
-
-**Bundle sub-filters (the actual drop rules):**
-
-| Bundle | Sub-filter | Drops | Condition (summary) |
-|--------|-----------|-------|---------------------|
-| crowdstrike…volume-reduction | Drop Low-Signal Event Types | Housekeeping/redundant events | `event_simpleName` ∈ {EndOfProcess(+V15/MacV15), SyntheticProcessRollup2, ConfigStateUpdate(+V3), ConfigStateHash, ChannelActive(+V1), CurrentSystemTags(+V1), LFODownloadConfirmation(+V1), SpotlightEntityBatchHeader(+V3), ProcessRollup2Stats} |
-| crowdstrike…volume-reduction | Drop Benign DNS Requests | Known-good vendor DNS lookups | `event_simpleName` ∈ {DnsRequest, DnsRequestV4} AND `DomainName` matches allowlist (microsoft/windows/apple/google/akamai/cloudflare/crowdstrike etc.) |
-| crowdstrike…volume-reduction | Drop Routine Internal Network Events | RFC1918 / loopback connections | `event_simpleName` ∈ {NetworkConnectIP4(+V12), NetworkReceiveAcceptIP4V12} AND `RemoteAddressIP4` matches `^(127.|10.|172.16–31.|192.168.)` |
-| reduce-cloudtrail-logs | Filter Read Only Data | Read-only AWS API calls | `eventName` contains {AuditUser, List, Get, Describe} OR `readOnly == "true"` |
-
-### B. Inline processors on live SecOps destination
-
-| ID | Form | Type | Attached to | Purpose | Status |
-|----|------|------|-------------|---------|--------|
-| `OptumUKWinEvtLog / ptmkc / copy_field` | inline | copy_field | config `OptumUKWinEvtLog` → dest `ptmkc` | Copy Resource `host.name` → `chronicle_ingestion_labels["ingestion_source"]` | existing-live |
-| `OptumUKWinEvtLog / ptmkc / batch` | inline | batch | config `OptumUKWinEvtLog` → dest `ptmkc` | Batch to SecOps (size 1024 / max 2048 / timeout 10s) | existing-live |
-
-> ⚠ Note: no actual **drop/keep filter** is currently live on the `OptumUKWinEvtLog` → `ptmkc` (Windows Events → SecOps) pipeline — only label-copy + batch. Windows Event filtering is a candidate for the "new filters" work below.
+> Notes:
+> - `AWS_Filter`, `AWS_Filter2`, `ZSCALER_Filter` have **no `logTypes` set** on the pipeline summary — worth confirming the target log type is applied inside the pipeline, otherwise routing/parsing may fall back.
+> - `Microsoft_Insights_Components` has **no description** — candidate for a one-line description for consistency.
+> - The detailed drop/keep rule logic for each pipeline is not exposed on the summary object; retrieving it needs the per-pipeline configuration (next step — see below).
 
 ---
 
-## Planned / new filters
+## 2. Other SecOps processing on the instance (context)
 
-| ID | Form | Type | Attached to | Purpose | Rule summary | Status | Owner |
-|----|------|------|-------------|---------|--------------|--------|-------|
-| _(add rows as we design them)_ | | | | | | | |
+### Reusable Blueprint bundles (library)
 
-Candidate starting points (to confirm with you):
-1. **Wire the existing bundles in** — attach `crowdstrike-…-volume-reduction` / `reduce-cloudtrail-logs` to their live configs so the library filtering actually runs (they appear unattached today).
-2. **Windows Event volume reduction** for `OptumUKWinEvtLog → ptmkc` — e.g. drop high-noise Event IDs (verbose logon/logoff 4634/4658, etc.) per your detection needs.
-3. **Batch tuning** — current inline batch is 1024/2048/10s; SecOps best practice suggests 1365/2048/2s per log type.
+| Bundle | Purpose | Key steps |
+|--------|---------|-----------|
+| `crowdstrike-falcon-google-secops-volume-reduction` | Cut CrowdStrike Falcon FDR volume | parse_json → drop low-signal / benign DNS / RFC1918 → prune → dedup → SecOps standardization |
+| `reduce-cloudtrail-logs` | Drop read-only AWS CloudTrail | parse_json → filter read-only → delete empty |
+
+### Inline processors on live config
+
+| Config → destination | Processors |
+|----------------------|-----------|
+| `OptumUKWinEvtLog` → `ptmkc` (Chronicle) | `copy_field` (host.name → ingestion_source label), `batch` (1024/2048/10s) |
+
+---
+
+## How to refresh this schedule
+
+```bash
+cd inventory
+cp .env.example .env      # set BINDPLANE_URL, BINDPLANE_API_KEY, BINDPLANE_ACCOUNT_ID
+./export-filters.sh       # writes a timestamped snapshot + prints the SecOps Pipelines
+```
 
 ---
 
@@ -91,4 +73,4 @@ Candidate starting points (to confirm with you):
 
 | Date | Change | By |
 |------|--------|-----|
-| 2026-08-22 | Initial reconciliation against snapshot `20260822T070416Z`. Recorded 2 Blueprint bundles (library), 2 inline processors on `ptmkc`, 2 SecOps destinations (`ptmkc`, `test`). | export-filters.sh |
+| 2026-08-22 | Located the 5 SecOps Pipeline filters via GraphQL `secOpsPipelineSummaries` and recorded them (AWS_Filter, AWS_Filter2, Azure_SQL_Filter, Microsoft_Insights_Components, ZSCALER_Filter). Added GraphQL + account-header support to export-filters.sh. | export-filters.sh |

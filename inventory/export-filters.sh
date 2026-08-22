@@ -38,11 +38,25 @@ fetch() {
     || { echo "  ! failed: $path" >&2; echo '{}' > "$OUT/$file"; }
 }
 
+# Multi-project instances require an account/project id header. Set BINDPLANE_ACCOUNT_ID
+# in .env to the target project (e.g. Google SecOps UK). If set, it is sent on every call.
+if [ -n "${BINDPLANE_ACCOUNT_ID:-}" ]; then
+  AUTH+=(-H "X-Bindplane-Account-ID: ${BINDPLANE_ACCOUNT_ID}")
+fi
+
 echo "Exporting BindPlane state from $BASE -> $OUT"
 fetch "/v1/processors"       "processors.json"
 fetch "/v1/configurations"   "configurations.json"
 fetch "/v1/destinations"     "destinations.json"
 fetch "/v1/sources"          "sources.json"
+
+# --- SecOps Pipelines (the /secops-pipelines UI) are served via GraphQL, not REST. ---
+# These are the named SecOps volume-reduction filters (AWS_Filter, ZSCALER_Filter, ...).
+echo "  GRAPHQL secOpsPipelineSummaries"
+curl -fsS "${AUTH[@]}" -H "Content-Type: application/json" -X POST "${BASE}/v1/graphql" \
+  -d '{"query":"{ secOpsPipelineSummaries { id displayName description logTypes createTime updateTime } }"}' 2>/dev/null \
+  | jq '.data.secOpsPipelineSummaries // []' > "$OUT/secops-pipeline-summaries.json" \
+  || { echo "  ! secOpsPipelineSummaries failed" >&2; echo '[]' > "$OUT/secops-pipeline-summaries.json"; }
 
 echo
 echo "=== SecOps destinations (candidates) ==="
@@ -81,6 +95,10 @@ jq -r '
       | ( (.processors // [])[]?
           | "  - [config " + $cfg + " → dest " + ($dest // "?") + "] " + (.type // "?") ) )
 ' "$OUT/configurations.json" 2>/dev/null || echo "  (none / unable to parse)"
+
+echo
+echo "=== SecOps Pipelines (named volume-reduction filters) ==="
+jq -r '.[] | "  - " + (.displayName // "?") + "  (logTypes=[" + ((.logTypes // []) | join(",")) + "])  — " + (.description // "" | gsub("^\\s+|\\s+$";""))' "$OUT/secops-pipeline-summaries.json" 2>/dev/null || echo "  (none)"
 
 echo
 echo "Snapshot written to: $OUT"
