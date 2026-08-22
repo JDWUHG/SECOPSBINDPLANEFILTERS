@@ -40,7 +40,7 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 | Filter | Detailed rules doc |
 |--------|--------------------|
 | Azure_SQL_Filter | [`../pipelines/AZURE_SQL_FILTER_DESIGN.md`](../pipelines/AZURE_SQL_FILTER_DESIGN.md) — **LIVE as of 2026-08-22**, verified state: [`azure_sql_filter_LIVE_20260822.json`](../pipelines/azure_sql_filter_LIVE_20260822.json). Original 2-rule baseline: [`azure_sql_filter.json`](../pipelines/azure_sql_filter.json) |
-| AWS_Filter | _(not yet captured)_ |
+| AWS_Filter | Live: 3 enumerated eventName drop rules (read-only Describe/Get/List; rule 2 ~97% redundant with rule 1). Proposed 2 new rules + rationale in [`../pipelines/aws_cloudtrail_filter.json`](../pipelines/aws_cloudtrail_filter.json); deploy guide [`../pipelines/DEPLOY_AWS_CLOUDTRAIL.md`](../pipelines/DEPLOY_AWS_CLOUDTRAIL.md). Feed `2ff7b983-...`. KMS Encrypt/GenerateDataKey drop = prior decision, left as-is. |
 | AWS_Filter2 | _(not yet captured)_ |
 | Microsoft_Insights_Components | _(not yet captured)_ |
 | ZSCALER_Filter | Live: 1 rule (drop Darktrace sensor phone-home). Captured + proposed extension in [`../pipelines/zscaler_filter.json`](../pipelines/zscaler_filter.json); deploy guide [`../pipelines/DEPLOY_ZSCALER.md`](../pipelines/DEPLOY_ZSCALER.md). Note: filter is scoped to ONE feed (`02d280ff-...`). |

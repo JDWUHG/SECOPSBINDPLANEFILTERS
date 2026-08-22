@@ -1,0 +1,43 @@
+{
+  "_status": "PROPOSED — NOT DEPLOYED. Live AWS_Filter (CloudTrail) pipeline c072e6b7-... currently has 3 enumerated eventName drop rules.",
+  "_design": "Two new rules that catch read/automation noise the enumerated lists miss, using CloudTrail's OWN fields rather than a hand-maintained list of 800+ names.",
+  "_no_sample_note": "Built against the DOCUMENTED, stable CloudTrail record schema (readOnly is a JSON boolean; invokedBy is the AWS-service caller string). Not a vendor guess. Still fails safe: if the real format differs, the rule drops nothing (no data loss).",
+  "_field_order_independent": "Both rules match a single field anywhere in the body, so unlike the Zscaler rules they do NOT depend on field ordering.",
+  "displayName": "AWS_Filter",
+  "description": "Cloudtrail log volume reduction",
+  "processors": [
+    {
+      "_rule": "A — drop everything AWS classifies as read-only. Biggest win; supersedes most of the 3 enumerated list rules.",
+      "_ui_regex": "\"readOnly\"\\s*:\\s*true",
+      "_keeps": "All readOnly:false events (creates/deletes/modifies/permission changes). KMS Encrypt/GenerateDataKey are readOnly:false so they are KEPT (consistent with prior KMS decision). Recon-detection use-case is covered by GuardDuty (already ingested).",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"readOnly\\\"\\\\s*:\\\\s*true\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "B — drop AWS service-internal automation (AWS talking to itself).",
+      "_ui_regex": "\"invokedBy\"\\s*:\\s*\"[a-z0-9.\\-]+\\.amazonaws\\.com\"",
+      "_keeps": "Anything invoked by a real user/role/external caller (no invokedBy AWS-service string). Smaller top-up win vs Rule A.",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"invokedBy\\\"\\\\s*:\\\\s*\\\"[a-z0-9.\\\\-]+\\\\.amazonaws\\\\.com\\\"\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    }
+  ],
+  "streams": [
+    {
+      "feed": "2ff7b983-0b01-4303-9848-4ce9b3db2bd3"
+    }
+  ],
+  "customMetadata": [
+    {
+      "key": "bindplaneURL",
+      "value": "https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines/c072e6b7-0690-419c-82ca-901b7ab2bc3f"
+    }
+  ]
+}
