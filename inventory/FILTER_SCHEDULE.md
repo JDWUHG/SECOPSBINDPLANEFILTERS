@@ -74,6 +74,32 @@ of this window, so their impact is NOT reflected here yet. Re-measure the daily 
 >   were made exactly where the volume is.
 > - Column values are: 30-day total / daily average / event count, as read from the report.
 
+## Early results (BL-02 — first read, caveated)
+
+First "after" snapshot taken **22 Aug 2026 ~09:42** (partial day). Compared to the 30-day
+daily-average baseline. **Caveat:** this is a partial **Saturday** morning, so absolute
+percentages are inflated by both the short window and lower weekend traffic — treat the
+DIRECTION as real and strong, but confirm exact figures against a full weekday.
+
+Projected-to-24h (partial ×24/9.7) vs baseline daily average:
+
+| Log type | Baseline GB/day | Projected today | Δ (caveated) | Event-count Δ |
+|----------|----------------:|----------------:|-------------:|--------------:|
+| AZURE_SQL | 205 | ~16 | **−92%** | −92% |
+| AWS_CLOUDTRAIL | 213 | ~42 | **−80%** | −84% |
+| AWS_WAF | 65 | ~16 | −76% | — |
+| AZURE_GATEWAY | 27 | ~9 | −65% | — |
+| AZURE_ACTIVITY | 28 | ~17 | −39% | — |
+| ZSCALER_WEBPROXY | 95 | ~70 | −26% | −25% |
+
+> - All these log types were filtered as part of this programme (not just the 3 in earlier notes).
+> - The steep **event-count** drops for Azure SQL (−92%) and CloudTrail (−84%) are the strongest
+>   evidence the event-dropping rules are biting — event count is a direct measure of records removed.
+> - **Zscaler shows the smallest drop (−26%)** — expected, because only Rule Z1 (Microsoft) is live;
+>   Z2–Z4 (Google/Apple/CDN) are still parked. Deploying those should increase the Zscaler reduction.
+> - **Confirm on a full weekday** (e.g. compare next Monday vs a typical pre-change Monday) to get
+>   the true, un-inflated numbers.
+
 ## Backlog / follow-up checks
 
 | ID | Item | Why it matters | Status |
