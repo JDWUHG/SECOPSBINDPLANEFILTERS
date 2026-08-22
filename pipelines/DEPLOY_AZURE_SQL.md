@@ -1,23 +1,35 @@
 # Deploying the AZURE_SQL filter changes
 
-**How this pipeline works:** you add **exclude processors**, each with a **single bare regex**.
-The UI generates the OTTL wrapper (`body != nil and IsString(body) and IsMatch(body, …)`) and all
-escaping for you. So paste **only the regex** shown below — nothing else.
-
-> The JSON spec is a **record**, not an uploadable file. Values below are generated from it.
-> Do not retype them.
+Each rule below is one **"Filter by Regex"** processor. Fill the form exactly as shown.
+The UI generates the OTTL wrapper and escaping itself, so paste **only the regex**.
 
 **Pipeline:** `Azure_SQL_Filter`
 **Edit here:** https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines/9c7b26bd-11f3-432f-a7df-a30b56a8955f
-**Rollback:** current 2-processor definition is preserved in `azure_sql_filter.json` — screenshot/export before editing.
+**Rollback:** current 2-processor definition preserved in `azure_sql_filter.json` — screenshot/export first.
 
-## Two rules of this UI model (they matter)
+## Form settings that apply to every rule
 
-1. **One regex per processor.** You cannot AND two conditions inside a single processor.
-2. **Multiple processors = OR.** Each processor drops independently.
+| Field | Value | Why |
+|---|---|---|
+| **Action** | `Exclude` | Removes matching logs |
+| **Match** | `Body` | The regex is evaluated against the log body |
+| **Field** | *(leave empty)* | Evaluates the entire body — see note below |
 
-Consequence: every rule below is a single self-contained regex. It is also why the
-routine-DML filter (proposed D3) is **not implementable safely here** — see the end.
+> **Why `Field` is left empty:** the live working rule guards with `IsString(body)` and regexes the raw
+> body text, which means the body arrives as an **unparsed JSON string**, not a structured map
+> (consistent with SecOps guidance to send logs raw). A string body has no addressable sub-fields, so
+> `Field` must stay empty.
+>
+> Setting `Field` to e.g. `category` would be *more precise* and would remove the small risk of a
+> whole-body match hitting the same text inside a SQL statement. Worth testing — but **separately**,
+> not bundled into this change.
+
+## Two rules of this processor model
+
+1. **One regex per processor** — you cannot AND two conditions in a single processor.
+2. **Multiple processors = OR** — each drops independently.
+
+(`Action: Include` also exists — it retains only matching logs. Not used here.)
 
 ---
 
@@ -25,7 +37,7 @@ routine-DML filter (proposed D3) is **not implementable safely here** — see th
 
 | Processor | Action |
 |---|---|
-| 1 — category exclude | **REPLACE** the regex (R1) — 6 → 11 categories |
+| 1 — category exclude | **REPLACE** the regex with R1 (6 → 11 categories) |
 | 2 — `BATCH STARTED` | **LEAVE ALONE** — already correct |
 | *new* 3 | **ADD** R3 |
 | *new* 4 | **DO NOT ADD YET** (R4) |
@@ -35,72 +47,95 @@ routine-DML filter (proposed D3) is **not implementable safely here** — see th
 
 ## R1 — non-security diagnostic / performance / health categories
 
-- **Action:** EXCLUDE
-- **Change:** REPLACE the existing processor 1 regex. Strict superset of the live 6 categories: 5 added, 0 removed.
+**REPLACE the existing processor 1 regex. Strict superset of the live 6 categories: 5 added, 0 removed.**
 
-**Regex to paste:**
+| Form field | Value |
+|---|---|
+| Short Description | Exclude non-security Azure SQL diagnostic and performance categories (gov 20/08/2026) |
+| Action | Exclude |
+| Match | Body |
+| Field | *(leave empty)* |
+
+**Regex:**
 
 ```
 "category":\s*"(DatabaseWaitStatistics|QueryStoreWaitStatistics|QueryStoreRuntimeStatistics|ResourceUsageStats|Timeouts|AutomaticTuning|WorkflowRuntime|Blocks|Deadlocks|SQLInsights|DatabaseInstances)"
 ```
 
-Zero. None of these categories carry authentication, permission, configuration or data-access evidence.
+Cost: Zero. None of these categories carry authentication, permission, configuration or data-access evidence.
 
 ---
 
 ## R2 — SQL audit batch-start markers
 
-- **Action:** EXCLUDE
-- **Change:** NO CHANGE - already live exactly as-is. Leave this processor alone.
+**NO CHANGE - already live exactly as-is. Leave this processor alone.**
 
-**Regex to paste:**
+| Form field | Value |
+|---|---|
+| Short Description | Exclude SQL audit BATCH STARTED markers (paired COMPLETED event carries the signal) |
+| Action | Exclude |
+| Match | Body |
+| Field | *(leave empty)* |
+
+**Regex:**
 
 ```
 "action_name":\s*"BATCH STARTED"
 ```
 
-Zero. The paired COMPLETED event carries the signal; STARTED is a marker only.
+Cost: Zero. The paired COMPLETED event carries the signal; STARTED is a marker only.
 
 ---
 
 ## R3 — Azure Monitor platform metrics records
 
-- **Action:** EXCLUDE
-- **Change:** ADD as a new processor.
+**ADD as a new processor.**
 
-**Regex to paste:**
+| Form field | Value |
+|---|---|
+| Short Description | Exclude Azure Monitor platform metrics records (no security evidence) |
+| Action | Exclude |
+| Match | Body |
+| Field | *(leave empty)* |
+
+**Regex:**
 
 ```
 "timeGrain":\s*"PT
 ```
 
-Zero. Platform metrics carry no security evidence. Often a large, overlooked volume contributor (a PT1M metrics stream was observed in this estate's feed list).
+Cost: Zero. Platform metrics carry no security evidence. Often a large, overlooked volume contributor (a PT1M metrics stream was observed in this estate's feed list).
 
 ---
 
 ## R4 — OPTIONAL: session logout / connection teardown churn
 
-- **Action:** EXCLUDE
-- **Change:** DO NOT ADD YET. Confirm the real action_name value in a live event first.
+**DO NOT ADD YET. Confirm the real action_name value in a live event first.**
 
-**Regex to paste:**
+| Form field | Value |
+|---|---|
+| Short Description | Exclude session logout / connection teardown churn |
+| Action | Exclude |
+| Match | Body |
+| Field | *(leave empty)* |
+
+**Regex:**
 
 ```
 "action_name":\s*"(LOGOUT|DATABASE AUTHENTICATION LOGOUT|CONNECTION CLOSED)"
 ```
 
-Near-zero, NOT zero. Logons are retained in full - only teardown is dropped. Marginal loss of session-duration context. Omit for a provably zero-cost set.
+Cost: Near-zero, NOT zero. Logons are retained in full - only teardown is dropped. Marginal loss of session-duration context. Omit for a provably zero-cost set.
 
 ---
 
 ## Steps
 
-1. Open the pipeline URL above.
-2. **Export/screenshot the current definition** (this is your rollback).
-3. Processor 1 → replace its regex with **R1**. Keep the exclude action and `errorMode = IGNORE`.
-4. **Add** a new exclude processor → paste **R3**. `errorMode = IGNORE`.
-5. Leave processor 2 untouched. Do **not** add R4.
-6. Save → sync / rollout.
+1. Open the pipeline URL, **export/screenshot the current definition** (rollback).
+2. Processor 1 → replace its **Regex** with R1. Leave Action=Exclude, Match=Body, Field empty.
+3. **Add** a new "Filter by Regex" processor → fill in R3.
+4. Leave processor 2 untouched. Do **not** add R4.
+5. Save → sync / rollout.
 
 ## Pre-flight gates
 
@@ -111,27 +146,27 @@ Near-zero, NOT zero. Logons are retained in full - only teardown is dropped. Mar
 ## Verify after deploy
 
 Before: `updateTime = 2026-08-20T10:35:01.605343Z`, **2** processors.
-After:  `updateTime` = your deploy time, **3** processors.
+After:  `updateTime` = deploy time, **3** processors.
 
-Then measure: AZURE_SQL volume by `category`, and within `SQLSecurityAuditEvents`
-by `action_name` plus average event size. That sizes the real dent and shows the next lever.
+Then measure AZURE_SQL volume by `category`, and within `SQLSecurityAuditEvents` by
+`action_name` + average event size. That sizes the real dent and shows the next lever.
 
 ---
 
 ## Why the routine-DML filter (D3) is not implementable here
 
-Dropping routine DML *safely* needs three conditions ANDed:
+Safely dropping routine DML needs three conditions ANDed:
 
 ```
 action_name is a batch/RPC completion
 AND statement matches SELECT|INSERT|UPDATE|DELETE
-AND succeeded = true        <-- the guard that preserves FAILED statements
+AND succeeded = true        <-- the guard preserving FAILED statements
 ```
 
-With one regex per processor, and RE2 having no lookahead, that guard cannot be
-expressed. A single-regex DML drop would also remove **failed** statements —
-destroying visibility of probing, injection attempts and permission denials.
+One regex per processor, and RE2 has no lookahead, so that guard cannot be expressed.
+A single-regex DML drop would also remove **failed** statements — destroying visibility of
+probing, injection attempts and permission denials.
 
-This is an independent, mechanical reason (on top of the exfiltration/insider-threat
-argument) not to pursue D3 in this pipeline. Close the volume gap with field
-pruning, dedup or asset-scoped filtering instead — see `AZURE_SQL_FILTER_DESIGN.md`.
+Mechanical reason, independent of the exfiltration/insider-threat argument, not to pursue D3
+here. Close the volume gap with field pruning, dedup or asset-scoped filtering instead —
+see `AZURE_SQL_FILTER_DESIGN.md`.
