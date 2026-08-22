@@ -1,0 +1,70 @@
+{
+  "_status": "PROPOSED — NOT DEPLOYED. Live ZSCALER_Filter pipeline 7d023b21-... currently has only the 1 Darktrace rule.",
+  "_design": "Extends the existing, PROVEN Darktrace rule to cover the biggest, most unambiguous web-proxy noise: allowed + no-threat browsing to major trusted vendor/CDN/update domains. Each rule is an exact clone of the live Darktrace rule's shape (same fields: action=Allowed, hostname suffix, threatcategory=None) with only the hostname pattern changed. No new field names, no guessing.",
+  "_safety": "Only ever drops traffic that is ALL of: action=Allowed AND hostname ends in a trusted domain AND threatcategory=None. Anything BLOCKED, anything with ANY threat category, and any unknown/lookalike domain is KEPT. Lookalike evasions (e.g. microsoft.com.attacker.ru) are KEPT because the trusted domain must be at the END of the hostname.",
+  "_blocked_traffic_note": "Per the owner's decision (2026-08-22): blocked Zscaler traffic is reviewed in the Zscaler console and does NOT need to be preserved in SecOps. A 'drop all blocked' rule is therefore desirable but is NOT included here because the exact 'action' value for blocked (e.g. 'Blocked' vs 'Denied') is unconfirmed. Add it once one real sample event confirms the value. See Zscaler section in FILTER_SCHEDULE.md backlog.",
+  "displayName": "ZSCALER_Filter",
+  "description": "Zscaler Webproxy Filter - drop allowed no-threat browsing to trusted vendor/CDN/update domains",
+  "processors": [
+    {
+      "_rule": "Z0 — EXISTING (already live). Drop Darktrace sensor phone-home traffic.",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"(?s:\\\"action\\\"\\\\s*:\\\\s*\\\"Allowed\\\".*?\\\"hostname\\\"\\\\s*:\\\\s*\\\"[^\\\"]*\\\\.darktracesensor\\\\.com\\\".*?\\\"threatcategory\\\"\\\\s*:\\\\s*\\\"None\\\")\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "Z1 — NEW. Drop allowed, no-threat browsing to Microsoft/Office/Windows/Azure domains.",
+      "_ui_regex": "(?s:\"action\"\\s*:\\s*\"Allowed\".*?\"hostname\"\\s*:\\s*\"[^\"]*\\.(microsoft|office|office365|windows|windowsupdate|azure|azureedge|msftconnecttest|msedge|live|microsoftonline)\\.(com|net)\".*?\"threatcategory\"\\s*:\\s*\"None\")",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"(?s:\\\"action\\\"\\\\s*:\\\\s*\\\"Allowed\\\".*?\\\"hostname\\\"\\\\s*:\\\\s*\\\"[^\\\"]*\\\\.(microsoft|office|office365|windows|windowsupdate|azure|azureedge|msftconnecttest|msedge|live|microsoftonline)\\\\.(com|net)\\\".*?\\\"threatcategory\\\"\\\\s*:\\\\s*\\\"None\\\")\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "Z2 — NEW. Drop allowed, no-threat browsing to Google domains.",
+      "_ui_regex": "(?s:\"action\"\\s*:\\s*\"Allowed\".*?\"hostname\"\\s*:\\s*\"[^\"]*\\.(google|googleapis|gstatic|googleusercontent|googlevideo)\\.com\".*?\"threatcategory\"\\s*:\\s*\"None\")",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"(?s:\\\"action\\\"\\\\s*:\\\\s*\\\"Allowed\\\".*?\\\"hostname\\\"\\\\s*:\\\\s*\\\"[^\\\"]*\\\\.(google|googleapis|gstatic|googleusercontent|googlevideo)\\\\.com\\\".*?\\\"threatcategory\\\"\\\\s*:\\\\s*\\\"None\\\")\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "Z3 — NEW. Drop allowed, no-threat browsing to Apple domains.",
+      "_ui_regex": "(?s:\"action\"\\s*:\\s*\"Allowed\".*?\"hostname\"\\s*:\\s*\"[^\"]*\\.(apple|icloud|mzstatic|cdn-apple)\\.com\".*?\"threatcategory\"\\s*:\\s*\"None\")",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"(?s:\\\"action\\\"\\\\s*:\\\\s*\\\"Allowed\\\".*?\\\"hostname\\\"\\\\s*:\\\\s*\\\"[^\\\"]*\\\\.(apple|icloud|mzstatic|cdn-apple)\\\\.com\\\".*?\\\"threatcategory\\\"\\\\s*:\\\\s*\\\"None\\\")\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    },
+    {
+      "_rule": "Z4 — NEW. Drop allowed, no-threat browsing to major CDN/edge infrastructure.",
+      "_ui_regex": "(?s:\"action\"\\s*:\\s*\"Allowed\".*?\"hostname\"\\s*:\\s*\"[^\"]*\\.(akamai|akamaized|akamaitechnologies|akamaiedge|cloudflare|fastly|edgesuite|edgekey|llnwd)\\.(net|com)\".*?\"threatcategory\"\\s*:\\s*\"None\")",
+      "filterProcessor": {
+        "logConditions": [
+          "body != nil and IsString(body) and IsMatch(body, \"(?s:\\\"action\\\"\\\\s*:\\\\s*\\\"Allowed\\\".*?\\\"hostname\\\"\\\\s*:\\\\s*\\\"[^\\\"]*\\\\.(akamai|akamaized|akamaitechnologies|akamaiedge|cloudflare|fastly|edgesuite|edgekey|llnwd)\\\\.(net|com)\\\".*?\\\"threatcategory\\\"\\\\s*:\\\\s*\\\"None\\\")\")"
+        ],
+        "errorMode": "IGNORE"
+      }
+    }
+  ],
+  "streams": [
+    {
+      "feed": "02d280ff-d19e-494f-8319-81a8545fdf42"
+    }
+  ],
+  "customMetadata": [
+    {
+      "key": "bindplaneURL",
+      "value": "https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines/7d023b21-3b13-4580-9174-a86b14dace06"
+    }
+  ]
+}

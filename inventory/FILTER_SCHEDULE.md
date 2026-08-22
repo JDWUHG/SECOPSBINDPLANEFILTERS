@@ -43,7 +43,7 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 | AWS_Filter | _(not yet captured)_ |
 | AWS_Filter2 | _(not yet captured)_ |
 | Microsoft_Insights_Components | _(not yet captured)_ |
-| ZSCALER_Filter | _(not yet captured)_ |
+| ZSCALER_Filter | Live: 1 rule (drop Darktrace sensor phone-home). Captured + proposed extension in [`../pipelines/zscaler_filter.json`](../pipelines/zscaler_filter.json); deploy guide [`../pipelines/DEPLOY_ZSCALER.md`](../pipelines/DEPLOY_ZSCALER.md). Note: filter is scoped to ONE feed (`02d280ff-...`). |
 
 > **Important — where the rules live:** these SecOps Pipelines are **Google SecOps `logProcessingPipelines`** (Chronicle API resources) authored via BindPlane's SecOps UI. They are NOT BindPlane configuration/processor resources, so BindPlane's REST/GraphQL read APIs do **not** return the rule bodies (only the summary list). To capture a pipeline's detailed rules, export its definition from the SecOps side (the `logProcessingPipelines` API / UI export) — that JSON is the authoritative source.
 
@@ -58,6 +58,8 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 | BL-03 | **Confirm no live SecOps detection depends on `Blocks` or `Deadlocks`** (Azure SQL categories added in R1). One-line confirmation needed from Cyber Defence. | Gate on R1 that was never formally closed before deploying. | ⏳ Open |
 | BL-04 | **Decide on `Errors` category** — drop as operational noise, or retain for investigation value (failed statements, injection attempts)? Currently retained (not dropped) by default. | Open decision from the governance decision paper, not yet actioned. | ⏳ Open |
 | BL-05 | **Apply the same zero-evidentiary-cost review to the other 4 filters** (`AWS_Filter`, `AWS_Filter2`, `Microsoft_Insights_Components`, `ZSCALER_Filter`) — likely similar "free" noise-category wins available. | Not yet started; rules for these 4 are not even captured yet (see "Detailed rules" table above). | ⏳ Open |
+| BL-07 | **Zscaler: add a "drop all blocked" rule.** Owner confirmed blocked traffic is reviewed in the Zscaler console and needn't be in SecOps. Needs one real Zscaler event to confirm the exact `action` value for blocked (`Blocked`/`Denied`/etc.) before building. | Biggest remaining Zscaler saving after the trusted-domain drops; safe once the value is confirmed. | ⏳ Open |
+| BL-08 | **Zscaler: confirm whether more than one Zscaler feed** flows into SecOps. The current filter is scoped to a single feed (`02d280ff-...`); other feeds would need the same rules. | Filters scoped per-feed; other feeds get no reduction until covered. | ⏳ Open |
 | BL-06 | **Rotate the BindPlane API keys** used during this session (both the original `bp_...` key and the `bps_...` Google SecOps UK key) — they were shared in chat and should be treated as exposed. | Basic credential hygiene. | ⏳ Open |
 
 ## 2. Other SecOps processing on the instance (context)
