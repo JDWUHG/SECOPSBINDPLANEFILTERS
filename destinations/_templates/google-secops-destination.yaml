@@ -1,0 +1,44 @@
+# Google SecOps (Chronicle) destination.
+#
+# Prefer the HTTPS (Chronicle / dataplane) protocol over legacy gRPC: it batches
+# more intelligently and mixes ingestion labels better. Collector v1.94.2+ is
+# required for HTTPS (earlier versions may silently drop logs on transient
+# 429/502/504 errors).
+#
+# Find Customer ID and GCP Project Number in Google SecOps:
+#   Settings -> Profile -> Organization Details.
+#
+# Secrets (service-account JSON) must NOT be committed. Reference a BindPlane
+# secret / secret-key resource, or inject at apply time. Do not paste the JSON here.
+apiVersion: bindplane.observiq.com/v1
+kind: Destination
+metadata:
+  name: google-secops
+  labels:
+    purpose: secops-egress
+spec:
+  type: chronicle                          # SecOps/Chronicle destination type
+  parameters:
+    - name: protocol
+      value: https                         # https (Chronicle API) recommended; or grpc
+    - name: region
+      value: us                            # region your credentials are provisioned for
+    - name: endpoint
+      value: chronicle.googleapis.com      # https endpoint (no protocol prefix)
+    - name: authentication_method
+      value: json                          # auto | json | file
+    - name: credentials
+      value: '${SECOPS_SA_JSON}'           # inject via secret — NEVER commit real JSON
+    - name: customer_id
+      value: REPLACE_CUSTOMER_ID_UUID
+    - name: project
+      value: REPLACE_GCP_PROJECT_NUMBER    # required for https
+    - name: api_version
+      value: v1                            # v1 | v1alpha | v1beta
+    - name: compression
+      value: gzip
+    # Advanced (tune for volume):
+    - name: batch_max_size
+      value: 4000000                       # match SecOps 4 MB request limit
+    - name: consumers
+      value: 40                            # raise (40–50 start) in busy systems, monitor "Deadline Exceeded"

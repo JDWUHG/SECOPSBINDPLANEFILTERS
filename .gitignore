@@ -1,0 +1,11 @@
+# Never commit credentials
+.env
+*.env
+**/.env
+inventory/.env
+
+# Service-account JSON / secrets
+*sa*.json
+*service-account*.json
+*credentials*.json
+secrets/

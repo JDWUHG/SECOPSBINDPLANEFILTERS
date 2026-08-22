@@ -1,0 +1,22 @@
+# Google SecOps Standardization processor — sets the SecOps log type (which
+# determines the parser SecOps uses), plus namespace and ingestion labels.
+#
+# Introduced in BindPlane agent 1.64.0; replaces the deprecated "Add Fields"
+# approach for SecOps pipelines. Use one per log type.
+apiVersion: bindplane.observiq.com/v1
+kind: Processor
+metadata:
+  name: secops-REPLACE-standardize
+  labels:
+    purpose: secops-standardization
+spec:
+  type: chronicle_standardization          # confirm exact type via component-types on your version
+  parameters:
+    - name: log_type
+      value: REPLACE_LOG_TYPE              # e.g. WINDOWS_DHCP, NIX_SYSTEM, PAN_FIREWALL
+    - name: namespace
+      value: REPLACE_NAMESPACE             # data-domain namespace (optional but recommended)
+    - name: ingestion_labels               # custom key/value labels attached at ingest
+      value:
+        environment: production
+        pipeline: secops-REPLACE

@@ -1,0 +1,22 @@
+# Batch processor — REQUIRED as (ideally) the first processor on every pipeline
+# feeding a Google SecOps destination.
+#
+# Purpose: maximise the payload of each SecOps API request while staying under
+# the SecOps API's ~4 MB per-request hard limit, reducing request overhead and
+# improving throughput. Best practice is one batch processor per log type.
+# (Sizes below are item COUNTS, not bytes — see BindPlane SecOps best practices.)
+apiVersion: bindplane.observiq.com/v1
+kind: Processor
+metadata:
+  name: secops-REPLACE-batch
+  labels:
+    purpose: secops-batching
+spec:
+  type: batch
+  parameters:
+    - name: send_batch_size
+      value: 1365          # recommended starting point
+    - name: send_batch_max_size
+      value: 2048          # recommended starting point
+    - name: timeout
+      value: 2s

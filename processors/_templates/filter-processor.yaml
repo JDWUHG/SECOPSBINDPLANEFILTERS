@@ -1,0 +1,34 @@
+# Filter processor — drop or keep telemetry before it reaches Google SecOps.
+#
+# Use this to remove noise (health checks, debug logs, chatty sources) so you
+# only pay to ingest what matters into SecOps.
+#
+# `action: drop`  → records matching `condition` are DROPPED.
+# `action: keep`  → only records matching `condition` are KEPT (everything else dropped).
+#
+# `condition` uses OTTL. Examples:
+#   body matches a substring:        IsMatch(body, ".*healthcheck.*")
+#   attribute equals:                attributes["log.level"] == "DEBUG"
+#   severity below threshold:        severity_number < SEVERITY_NUMBER_WARN
+#   combine:                         attributes["source"] == "iis" and IsMatch(body, ".*/ping$")
+#
+# Copy this file to ../secops-<pipeline>-filter-<purpose>.yaml, edit, and add a
+# row to inventory/FILTER_SCHEDULE.md.
+apiVersion: bindplane.observiq.com/v1
+kind: Processor
+metadata:
+  name: secops-REPLACE-filter-REPLACE        # must match the filename & schedule ID
+  labels:
+    purpose: secops-noise-reduction
+spec:
+  type: filter_severity                      # or `filter` — confirm exact type via component-types on your version
+  parameters:
+    - name: action
+      value: drop                            # drop | keep
+    - name: match_type
+      value: expr                            # OTTL expression
+    - name: condition
+      value: 'IsMatch(body, ".*REPLACE.*")'  # <-- the rule
+    - name: telemetry_types
+      value:
+        - Logs
