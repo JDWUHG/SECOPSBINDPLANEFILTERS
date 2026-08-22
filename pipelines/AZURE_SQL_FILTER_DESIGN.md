@@ -1,8 +1,11 @@
 # AZURE_SQL — deployable filter set + path to target
 
-> ## ⛔ STATUS: NOT DEPLOYED — FOR REVIEW
-> Live pipeline `9c7b26bd-11f3-432f-a7df-a30b56a8955f` is **unchanged** (2 rules, see [`azure_sql_filter.json`](./azure_sql_filter.json)).
-> Proposed set: [`azure_sql_filter_v2.json`](./azure_sql_filter_v2.json)
+> ## ✅ STATUS: R1–R3 DEPLOYED & VERIFIED — R4 not yet added
+> Live pipeline `9c7b26bd-11f3-432f-a7df-a30b56a8955f` now runs **3 processors**
+> (R1, R2, R3 below), confirmed byte-for-byte correct via pipeline JSON export
+> as of `updateTime = 2026-08-22T08:37:50.907487Z`. R4 (logout/teardown, optional)
+> has **not** been added — still needs its `action_name` value confirmed first.
+> Baseline (previous 2-rule state) preserved in [`azure_sql_filter.json`](./azure_sql_filter.json).
 
 **Governance basis:** Decision Paper *Filtering of AZURE_SQL*, 20/08/2026 (Johann de Winnaar). FILTER HEAVILY, P2, implementation point BindPlane. Target: retain ~20% of ≈34.526 GB/day.
 
@@ -30,7 +33,7 @@
 | **R3** | Azure Monitor platform metrics records | **Zero** | Metrics-shape fingerprint; fails safe if absent. **DEPLOYED & VERIFIED** 2026-08-22T08:26:27 — byte-for-byte match confirmed via pipeline JSON export. |
 | **R4** | *Optional* — session logout/teardown churn | Near-zero | Confirm `action_name` value first |
 
-> **Deployment log:** R3 took three attempts to land correctly — two earlier saves silently no-op'd (a stray trailing newline, then a stray trailing escaped quote), both of which failed *safe* (dropped nothing) rather than unsafe. Lesson: after pasting a regex into the UI box, click away or Tab rather than pressing Enter, and always verify via a pipeline JSON export rather than assuming the UI saved exactly what was typed. R1 (11-category superset) is next — verifying now.
+> **Deployment log:** R3 took three attempts to land correctly — two earlier saves silently no-op'd (a stray trailing newline, then a stray trailing escaped quote), both of which failed *safe* (dropped nothing) rather than unsafe. R1 (11-category superset, replacing the original 6-category processor) landed correctly on the first attempt. **Final state confirmed 2026-08-22T08:37:50** via pipeline JSON export: exactly 3 processors, all three regexes byte-for-byte matching spec, no extras, nothing missing. Lesson for future changes to this pipeline: after pasting a regex, click away or Tab rather than pressing Enter, and always verify via a pipeline JSON export rather than trusting `updateTime` alone — `updateTime` only proves *a* change landed, not that its content is correct.
 
 **Deliberately excluded:** routine-DML drop (proposed D3) and successful-authentication drop (proposed D4). Rationale in *Security assessment* below.
 

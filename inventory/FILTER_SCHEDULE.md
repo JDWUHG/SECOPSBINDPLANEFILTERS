@@ -21,7 +21,7 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 |--------|---------|-------------|---------|---------------|
 | **AWS_Filter** | CloudTrail log volume reduction | _(none set)_ | 2026-08-14 | 2026-08-19 |
 | **AWS_Filter2** | AWS WAF log volume reduction | _(none set)_ | 2026-08-17 | 2026-08-20 |
-| **Azure_SQL_Filter** | Azure SQL log | `AZURE_SQL` | 2026-08-18 | 2026-08-20 |
+| **Azure_SQL_Filter** | Azure SQL log — **heavily filtered per governance decision 20/08/2026** | `AZURE_SQL` | 2026-08-18 | **2026-08-22** (3 processors, up from 2) |
 | **Microsoft_Insights_Components** | _(no description)_ | `MICROSOFT_INSIGHTS_COMPONENTS` | 2026-08-20 | 2026-08-20 |
 | **ZSCALER_Filter** | Zscaler Webproxy filter | _(none set)_ | 2026-08-21 | 2026-08-21 |
 
@@ -39,7 +39,7 @@ The **single register** of every filter/pipeline in scope for Google SecOps inge
 
 | Filter | Detailed rules doc |
 |--------|--------------------|
-| Azure_SQL_Filter | [`../pipelines/AZURE_SQL_FILTER_RULES.md`](../pipelines/AZURE_SQL_FILTER_RULES.md) (raw: `../pipelines/azure_sql_filter.json`) |
+| Azure_SQL_Filter | [`../pipelines/AZURE_SQL_FILTER_DESIGN.md`](../pipelines/AZURE_SQL_FILTER_DESIGN.md) — **LIVE as of 2026-08-22**, verified state: [`azure_sql_filter_LIVE_20260822.json`](../pipelines/azure_sql_filter_LIVE_20260822.json). Original 2-rule baseline: [`azure_sql_filter.json`](../pipelines/azure_sql_filter.json) |
 | AWS_Filter | _(not yet captured)_ |
 | AWS_Filter2 | _(not yet captured)_ |
 | Microsoft_Insights_Components | _(not yet captured)_ |
@@ -81,3 +81,4 @@ cp .env.example .env      # set BINDPLANE_URL, BINDPLANE_API_KEY, BINDPLANE_ACCO
 | Date | Change | By |
 |------|--------|-----|
 | 2026-08-22 | Located the 5 SecOps Pipeline filters via GraphQL `secOpsPipelineSummaries` and recorded them (AWS_Filter, AWS_Filter2, Azure_SQL_Filter, Microsoft_Insights_Components, ZSCALER_Filter). Added GraphQL + account-header support to export-filters.sh. | export-filters.sh |
+| 2026-08-22 | Deployed & verified R1 (11-category exclude, superset of original 6) + R3 (Azure Monitor metrics exclude) on Azure_SQL_Filter. Now 3 processors, zero-evidentiary-cost. Reduction not yet measured. | manual UI deploy, verified via JSON export |
