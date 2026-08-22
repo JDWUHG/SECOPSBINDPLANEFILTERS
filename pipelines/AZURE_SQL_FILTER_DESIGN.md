@@ -1,74 +1,104 @@
-# AZURE_SQL — drop filter set
+# AZURE_SQL — deployable filter set + path to target
 
-> ## ⛔ STATUS: NOT DEPLOYED — FOR REVIEW ONLY
-> These definitions have **not** been applied to any environment. The live pipeline
-> `9c7b26bd-11f3-432f-a7df-a30b56a8955f` is **unchanged** and still runs the original
-> 2 rules in [`azure_sql_filter.json`](./azure_sql_filter.json).
->
-> Do not apply until: (a) this design is approved, (b) the §7.6 pre-implementation
-> validation is complete, and (c) the open decisions below are closed.
+> ## ⛔ STATUS: NOT DEPLOYED — FOR REVIEW
+> Live pipeline `9c7b26bd-11f3-432f-a7df-a30b56a8955f` is **unchanged** (2 rules, see [`azure_sql_filter.json`](./azure_sql_filter.json)).
+> Proposed set: [`azure_sql_filter_v2.json`](./azure_sql_filter_v2.json)
 
-**Governance basis:** Decision Paper *Filtering of AZURE_SQL*, 20/08/2026, issued & approved by Johann de Winnaar. Decision **FILTER HEAVILY**, Priority **P2**, implementation point **BindPlane**.
-
-**Targets (§2, §12.1):** retain ~20% of ≈34.526 GB/day → ≈6.905 GB/day; save ≈27.621 GB/day ≈ 0.83 TB/month ≈ 10.08 TB/year.
-
-**Approach:** drop-only. Every rule is a `filterProcessor` that removes a specific category of traffic named in §7.5 / §12.3. No allowlist/keep inversion — nothing is dropped unless a rule explicitly targets it.
-
-Definition: [`azure_sql_filter_v2.json`](./azure_sql_filter_v2.json) · Live baseline: [`azure_sql_filter.json`](./azure_sql_filter.json)
+**Governance basis:** Decision Paper *Filtering of AZURE_SQL*, 20/08/2026 (Johann de Winnaar). FILTER HEAVILY, P2, implementation point BindPlane. Target: retain ~20% of ≈34.526 GB/day.
 
 ---
 
-## Deployable rules
+## The position in one line
 
-| # | Drops | Maps to (§7.5/§12.3) | Basis |
+**Take the zero-evidentiary-cost reduction now; do not buy the remaining 80% by deleting exfiltration and insider-threat detection.**
+
+## What this set does and does not do
+
+| | |
+|---|---|
+| ✅ Reduces volume using only telemetry with **no security evidence** | |
+| ✅ **Deployable without** resolving the Azure-retention question — nothing evidentiary is dropped | |
+| ✅ Leaves exfiltration, insider-threat, authentication and permission-change detection **fully intact** | |
+| ❌ **Will not reach 80%.** Making that claim would be dishonest | |
+
+## Rules
+
+| # | Drops | Cost | Basis |
 |---|---|---|---|
-| **D1** | Categories: `DatabaseWaitStatistics`, `QueryStoreWaitStatistics`, `QueryStoreRuntimeStatistics`, `ResourceUsageStats`, `Timeouts`, `AutomaticTuning`, `WorkflowRuntime`, `Blocks`, `Deadlocks`, `SQLInsights`, `DatabaseInstances` | Health telemetry; Performance monitoring | **Grounded** — `category` proven present in this feed |
-| **D2** | `action_name = BATCH STARTED` | Expected application transactions | **Grounded** — already live |
-| **D3** | Successful routine DML — `BATCH COMPLETED`/`RPC COMPLETED`/`TRANSACTION COMMITTED` where statement starts `SELECT`/`INSERT`/`UPDATE`/`DELETE`/`MERGE` **and** `succeeded=true` | Routine SELECT/INSERT/UPDATE/DELETE; Normal application activity; Routine business transactions | Confirm `statement` field name |
-| **D4** | `DATABASE AUTHENTICATION SUCCEEDED`, `LOGIN SUCCEEDED`, `CONNECTION CLOSED` | Successful routine connections | Confirm values present |
+| **R1** | 11 diagnostic/performance/health categories (extends live 6) | **Zero** | Grounded — `category` proven present |
+| **R2** | `BATCH STARTED` markers | **Zero** | Grounded — already live |
+| **R3** | Azure Monitor platform metrics records | **Zero** | Metrics-shape fingerprint; fails safe if absent |
+| **R4** | *Optional* — session logout/teardown churn | Near-zero | Confirm `action_name` value first |
 
-**D3 and D4 are the volume levers.** D1/D2 alone will not approach 80%, because most AZURE_SQL volume is routine DML inside `SQLSecurityAuditEvents`.
+**Deliberately excluded:** routine-DML drop (proposed D3) and successful-authentication drop (proposed D4). Rationale in *Security assessment* below.
 
-### Built-in safety guards
-- **D3 only drops `succeeded=true`.** Failed statements — permission denials, probing, injection attempts — are **never** dropped.
-- **D4 only drops successes.** `LOGIN FAILED` / `DATABASE AUTHENTICATION FAILED` are untouched (§7.4 authentication failures).
-- **D1 does not touch `SQLSecurityAuditEvents`**, so no audit event is lost to the category drops.
-- All rules use `errorMode: IGNORE` — an unparseable record is **not** dropped.
+### Safety properties
+- `SQLSecurityAuditEvents` is **untouched** except paired-marker noise → no audit evidence lost
+- **All FAILED events retained** — logins, authentications, statements
+- **All successful logons retained** (R4 drops teardown only, never logon)
+- Unknown/new category → **not** dropped (fails safe, costs reduction not visibility)
+- `errorMode: IGNORE` → unparseable records survive
+- `Errors` category deliberately **not** dropped pending decision
 
 ---
 
-## Rules still needing field values
+## Security assessment — why D3 and D4 are out
 
-These are named in §7.5/§12.3 but cannot be written without the actual field values in this estate. Per §12.4.3 they are recorded as **unsupported rather than invented** — no guessed rule has been added.
+**D4 (drop successful logins): poor trade.** Auth events are small and rare, so savings are negligible — but successful authentication underpins brute-force-success detection (the failure→success transition), impossible travel, and compromise confirmation. Retaining failures while dropping successes leaves you the noise and removes the conclusion.
 
-| # | Would drop | Needs |
+**D3 (drop routine successful DML): conflicts with the paper itself.** §4.1/§4.2 rate exfiltration and insider-threat detection **High**, and §7.4 mandates retaining export/bulk-extraction/large-query activity. But database exfiltration and insider abuse consist almost entirely of *successful* SELECTs by *legitimately authenticated* accounts. With **no volumetric field** in this feed (no rows-returned/bytes/duration), a 10-row app query and a mass extraction are indistinguishable — both would be dropped.
+
+D3 also has engineering defects: it anchors on the statement *starting* with a DML keyword, so it misses `/* hint */ SELECT`, `SET NOCOUNT ON; SELECT`, `WITH cte AS (…) SELECT`, and `EXEC sp_executesql`. In a stored-procedure-heavy estate it may reduce almost nothing — under-delivering while still carrying full detection risk.
+
+**Escalate, don't engineer around:** if the security criteria in §7.4 and the 80% figure cannot coexist, the security criteria should win and the number should be revised. A percentage reverse-engineered from cost is not a security requirement.
+
+---
+
+## Step 2 — measure, then decide (the actual unlock)
+
+The 80% argument is currently opinion on both sides. **Measure the byte distribution and it becomes arithmetic.**
+
+1. Baseline AZURE_SQL daily volume (paper says 34.526 GB/day — re-confirm).
+2. Break volume down **by `category`** — this tells you what R1/R3 actually recover.
+3. Within `SQLSecurityAuditEvents`, break down **by `action_name`**, and estimate **average event size**.
+
+Use the SecOps ingestion metrics/dashboards plus a statistics-style search grouped by category (confirm exact syntax in your tenant).
+
+**What the numbers will tell you:**
+- If diagnostics/metrics are a large share → R1+R3 may get you most of the way with **zero** detection cost.
+- If `SQLSecurityAuditEvents` dominates **by event count** → look at dedup (repetitive ORM/app query shapes).
+- If it dominates **by event size** → the bytes are in the `statement` / `additional_information` text, and **field pruning is the answer, not event dropping.**
+
+## Step 3 — close the gap without losing detection
+
+Preferred order once measured:
+
+1. **Prune fields, don't drop events.** Truncate/strip `statement` and `additional_information`, keep the skeleton (principal, client IP, database, object, action, outcome, timestamp). Kills most bytes, retains who-touched-what-from-where. Google documents these pipelines as able to [filter events, transform fields, or redact values before ingestion](https://docs.cloud.google.com/chronicle/docs/ingestion/data-processing-pipeline) — confirm the transform/redact processor is exposed in your UI. *(Rephrased for licensing compliance.)*
+2. **Dedup repetitive application traffic** — collapse identical query shapes per principal/object over a window, retain counts.
+3. **Scope by asset sensitivity** — filter routine DML only for low-sensitivity application databases; retain in full for databases holding patient/sensitive data. Most defensible under audit. Needs a data-classification input.
+4. **Sampling** (1-in-N) only if 1–3 fall short.
+
+---
+
+## Open decisions
+
+| # | Decision | Owner |
 |---|---|---|
-| D5 | Service-account / normal application traffic | Confirmed `server_principal_name` / `application_name` values |
-| D6 | ORM-generated workload | Confirmed ORM `application_name` (e.g. framework client string) |
-| D7 | Scheduled reporting + ETL processing | Confirmed reporting/ETL principal or app names |
-| D8 | Backup / replication / synchronisation | Confirmed identifying field; see conflict below |
+| 1 | `Errors` category — drop as noise, or retain for investigation value? | Cyber Defence |
+| 2 | `Blocks`/`Deadlocks` (in R1) — confirm no approved detection depends on them | Cyber Defence |
+| 3 | Backup contradiction — §7.5 filters backups, but **restore** is a tamper/exfil vector. Filter backups only, or both? | Cyber Defence |
+| 4 | R4 `action_name` value — confirm before enabling | Analyst |
+| 5 | **Is full Azure-side audit retention real, complete, and retrievable in incident timeframes?** Gates any future evidentiary filtering | Cloud/Azure Eng |
+| 6 | Do any of these databases hold patient/sensitive data? Gates option 3 above | IG / DPO |
 
-To unlock these: sample production events and record the identifying field/value per §12.5, then add one drop rule each.
+## Silent-failure controls (§7.6)
 
----
-
-## Decisions needed
-
-1. **Backup contradiction.** §7.5 lists *"Backup operations"* as FILTER, but restore activity is a recognised tamper/exfiltration vector. Confirm: drop scheduled backups only, or backup **and** restore?
-2. **`Errors` category** — deliberately **not** dropped in D1. Drop as operational noise, or retain for investigation value?
-3. **`Blocks` / `Deadlocks`** — included in D1. Confirm no approved detection depends on them (§7.6).
-4. **Consequence to accept:** D3 drops *successful* `SELECT`, which is also where bulk-export / large-result-set evidence would live. §7.4 lists those as retain-worthy, but they have no distinguishing field in this feed (no rows-returned/volume field), so they cannot be exempted. Either accept the loss, or add a narrower carve-out once a volumetric field is identified.
-
----
-
-## Validation (§7.6, §12.6)
-
-**Before:** capture representative events per category · confirm no active detection relies on D1–D4 targets · re-confirm the 34.526 GB/day baseline.
-
-**After:** confirm retained events still searchable · confirm routine DB traffic stopped · **measure actual reduction** against the 0.83 TB/month estimate · confirm detections still function · record final logic + evidence in the SIEM engineering record.
-
-> Expected reduction is **not** asserted here — it must be measured. If D1–D4 fall short of 80%, close the gap with D5–D8 once field values are confirmed, rather than broadening D3.
+SecOps rules **do not error when their source data disappears — they just stop firing.** Zero alerts looks identical to zero threats. Therefore:
+- Capture a **rule-firing baseline** before/after
+- Deploy **canary events** per retained category and confirm arrival
+- Alert on a **volume floor** per log type (if AZURE_SQL approaches zero, something over-filtered)
+- Note: **dropped data cannot be retro-hunted.** An IOC arriving in three months has nothing to hunt against
 
 ## Deployment note
 
-These are **Google SecOps `logProcessingPipelines`** (Chronicle API), authored via BindPlane's SecOps Pipelines UI — not BindPlane processor resources. Apply by updating pipeline `9c7b26bd-11f3-432f-a7df-a30b56a8955f` so history/metadata is preserved. `scripts/apply.sh` (BindPlane CLI) does **not** apply these.
+These are **Google SecOps `logProcessingPipelines`** (Chronicle API) authored via BindPlane's SecOps Pipelines UI — not BindPlane processor resources. Update pipeline `9c7b26bd-…` in place so history/metadata is preserved. `scripts/apply.sh` (BindPlane CLI) does **not** apply these.

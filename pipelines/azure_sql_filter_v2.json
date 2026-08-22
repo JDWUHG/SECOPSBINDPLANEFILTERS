@@ -1,16 +1,18 @@
 {
-  "_status": "NOT DEPLOYED — PROPOSED / FOR REVIEW ONLY. Has not been applied to any environment. The live pipeline 9c7b26bd-11f3-432f-a7df-a30b56a8955f is unchanged.",
-  "_comment": "AZURE_SQL drop-only filter set. Every processor is a DROP rule mapped to a line item in the governance decision paper (Filtering of AZURE_SQL, 20/08/2026). No allowlist/keep inversion is used.",
-  "_governance": "Decision: FILTER HEAVILY. Priority P2. Target retain ~20% of 34.526 GB/day.",
-  "_updates": "Pipeline id 9c7b26bd-11f3-432f-a7df-a30b56a8955f (supersedes the 2-rule live definition in azure_sql_filter.json).",
-  "_ordering": "Cheapest/broadest drops first. A record dropped by an earlier rule never reaches later rules.",
+  "_status": "PROPOSED — NOT DEPLOYED. Live pipeline 9c7b26bd-11f3-432f-a7df-a30b56a8955f is unchanged.",
+  "_design": "ZERO-EVIDENTIARY-COST filter set. Every rule targets telemetry that carries no security evidence, so nothing here weakens exfiltration, insider-threat, authentication or permission-change detection. SQLSecurityAuditEvents is left intact apart from paired-marker noise.",
+  "_why_deployable_now": "Because no rule drops evidence, this set does NOT depend on verifying Azure-side audit retention (assessment point 5). It can go ahead while the routine-DML question (point 1) is still being resolved at governance level.",
+  "_excluded_deliberately": "No routine-DML drop (proposed D3) and no successful-authentication drop (proposed D4). D3 destroys exfiltration/insider detection; D4 is a very poor bytes-per-value trade. Both are out of this set.",
+  "_governance": "Decision Paper: Filtering of AZURE_SQL, 20/08/2026. Decision FILTER HEAVILY, Priority P2. NOTE: this set alone will NOT reach the 80% target - see AZURE_SQL_FILTER_DESIGN.md.",
   "displayName": "Azure_SQL_Filter",
-  "description": "Azure SQL Log - heavy filtering per governance decision 20/08/2026",
+  "description": "Azure SQL Log - zero-evidentiary-cost volume reduction (governance decision 20/08/2026)",
   "processors": [
     {
-      "_rule": "D1 — operational, performance and health telemetry categories",
+      "_rule": "R1 — non-security diagnostic / performance / health categories",
       "_maps_to": "7.5/12.3: Health telemetry; Performance monitoring activity",
-      "_grounded": "Keys on 'category', proven present in this feed (live filter already matches it).",
+      "_basis": "GROUNDED. Keys on 'category', proven present in this feed (the live filter already matches it). Extends the live 6 categories to 11.",
+      "_cost": "Zero. None of these categories carry authentication, permission, configuration or data-access evidence.",
+      "_note": "'Errors' is deliberately NOT included - it can carry investigation value (failed statements, injection attempts). Decision pending.",
       "filterProcessor": {
         "logConditions": [
           "body != nil and IsString(body) and IsMatch(body, \"\\\"category\\\":\\\\s*\\\"(DatabaseWaitStatistics|QueryStoreWaitStatistics|QueryStoreRuntimeStatistics|ResourceUsageStats|Timeouts|AutomaticTuning|WorkflowRuntime|Blocks|Deadlocks|SQLInsights|DatabaseInstances)\\\"\")"
@@ -19,9 +21,10 @@
       }
     },
     {
-      "_rule": "D2 — SQL audit batch-start markers (the paired COMPLETED event carries the signal)",
+      "_rule": "R2 — SQL audit batch-start markers",
       "_maps_to": "7.5/12.3: Expected database application transactions",
-      "_grounded": "Carried forward unchanged from the live filter.",
+      "_basis": "GROUNDED. Carried forward unchanged from the live filter.",
+      "_cost": "Zero. The paired COMPLETED event carries the actual signal; STARTED is a marker only.",
       "filterProcessor": {
         "logConditions": [
           "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"BATCH STARTED\\\"\")"
@@ -30,24 +33,26 @@
       }
     },
     {
-      "_rule": "D3 — successful routine DML (SELECT / INSERT / UPDATE / DELETE)",
-      "_maps_to": "7.5/12.3: Routine SELECT, INSERT, UPDATE, DELETE; Normal application-generated database activity; Routine business transactions",
-      "_guard": "Only drops when succeeded=true, so FAILED statements (probing, permission denials) still reach SecOps.",
-      "_confirm": "Confirm the 'statement' field name in this feed's parsed events before deploying.",
+      "_rule": "R3 — Azure Monitor platform metrics records",
+      "_maps_to": "7.5/12.3: Health telemetry; Performance telemetry",
+      "_basis": "Fingerprints the Azure metrics record shape (metricName + timeGrain). An audit event does not carry these fields, so false-positive risk is negligible. If no metrics reach this log type the rule simply never fires (fails safe).",
+      "_cost": "Zero. Platform metrics carry no security evidence. Often a large, entirely overlooked volume contributor (a PT1M metrics stream was observed in this estate's feed list).",
       "filterProcessor": {
         "logConditions": [
-          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"(BATCH COMPLETED|RPC COMPLETED|TRANSACTION COMMITTED)\\\"\") and IsMatch(body, \"(?i)\\\"statement\\\":\\\\s*\\\"\\\\s*(SELECT|INSERT|UPDATE|DELETE|MERGE)\\\\s\") and IsMatch(body, \"\\\"succeeded\\\":\\\\s*\\\"?true\\\"?\")"
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"metricName\\\":\") and IsMatch(body, \"\\\"timeGrain\\\":\\\\s*\\\"PT\")"
         ],
         "errorMode": "IGNORE"
       }
     },
     {
-      "_rule": "D4 — successful routine connections / authentications",
+      "_rule": "R4 — OPTIONAL: session logout / connection teardown churn",
       "_maps_to": "7.5/12.3: Successful routine connections",
-      "_guard": "Only successes are dropped. LOGIN FAILED / DATABASE AUTHENTICATION FAILED are untouched and continue to SecOps.",
+      "_basis": "CONFIRM the action_name value in this feed before enabling (candidates: LOGOUT, DATABASE AUTHENTICATION LOGOUT, CONNECTION CLOSED). If the value is wrong the rule simply never fires.",
+      "_cost": "Near-zero, NOT zero. Logon events are retained in full - only teardown is dropped. Marginal loss of session-duration context. Remove this processor if you want a provably zero-cost set.",
+      "_important": "This does NOT drop successful logons. LOGIN SUCCEEDED / DATABASE AUTHENTICATION SUCCEEDED and all FAILED events are retained.",
       "filterProcessor": {
         "logConditions": [
-          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"(DATABASE AUTHENTICATION SUCCEEDED|LOGIN SUCCEEDED|CONNECTION CLOSED)\\\"\")"
+          "body != nil and IsString(body) and IsMatch(body, \"\\\"action_name\\\":\\\\s*\\\"(LOGOUT|DATABASE AUTHENTICATION LOGOUT|CONNECTION CLOSED)\\\"\")"
         ],
         "errorMode": "IGNORE"
       }
@@ -66,6 +71,10 @@
     {
       "key": "governanceDecision",
       "value": "AZURE_SQL-FILTER-HEAVILY-20260820"
+    },
+    {
+      "key": "riskProfile",
+      "value": "zero-evidentiary-cost"
     }
   ]
 }
