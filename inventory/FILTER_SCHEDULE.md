@@ -16,7 +16,8 @@
 | 22 Aug | AZURE_SQL | Drop diagnostic/perf/health categories (R1) + BATCH STARTED (R2) + Azure Monitor metrics (R3); redact SQL statement text | ~92% | ~5.74 | JSON-verified; BL-01 (redaction output) open |
 | 22 Aug | AWS_CLOUDTRAIL | Drop `readOnly:true` (Rule A) + `invokedBy` AWS-service automation (Rule B), on top of existing name-list rules | ~80% | ~5.20 | JSON-verified byte-for-byte |
 | 22 Aug | ZSCALER_WEBPROXY | Rule Z1 — drop allowed + no-threat browsing to Microsoft/Office/Windows/Azure (plus existing Darktrace rule) | partial | ~0.4 | JSON-verified |
-| **Total banked** | | | | **~12.2 TB/mo** | |
+| 24 Aug | ZSCALER_WEBPROXY | **Category rule** — drop allowed + no-threat traffic in Zscaler `category_details`: Business and Economy (+Other), Exception Dynatrace, EMIS SSL Bypass, EMIS AWS Cloud Connector Whitelist, EMIS GitHub Runners Whitelist, AAA_SSL Microsoft Windows Endpoint Optimization, AAA_SSL Apple Domains, Zscaler Proxy IPs | large | ~1.1 (est; measure) | Rolled out (updateTime 24 Aug 09:36); confirm volume vs ~95 GB/day baseline |
+| **Total banked** | | | | **~13.3 TB/mo (est)** | |
 
 **Post-work run-rate (Sat 22 Aug, like-for-like vs a normal Saturday): ~63% overall reduction.**
 Projected new run-rate ~7.8–8 TB/month (confirm on first full weekday — BL-02).
@@ -30,7 +31,7 @@ SecOps pipeline, unless noted. Full paste-ready regexes in `../pipelines/REMAINI
 
 | ID | When | Log source | Processor to add | Cut | Saved TB/mo | Ready? |
 |----|------|-----------|------------------|-----|-------------|--------|
-| T2 | **23 Aug** | ZSCALER_WEBPROXY | Z2 Google, Z3 Apple, Z4 CDN (allowed+no-threat) | +45% | ~1.30 | ✅ built & tested |
+| ~~T2~~ | SUPERSEDED | ZSCALER_WEBPROXY | ~~Z2 Google, Z3 Apple, Z4 CDN (domain-based)~~ — **NOT deployed.** Replaced by the 24 Aug category-based rule (broader & more robust; category `AAA_SSL Microsoft/Apple` + Business and Economy cover more than the domain lists). Domain rules in `zscaler_filter.json` remain as reference only. | — | (in category rule) | ❌ not deployed — superseded |
 | T1 | on sample+signoff | AWS_WAF | Drop `action=ALLOW` (keep BLOCK/COUNT) | 75% | ~1.49 | ⚠️ needs 1 sample + sign-off |
 | T3 | phase 2 | ZSCALER_ZPA | Drop allowed + no-threat | 40% | ~0.09 | confirm feed fields |
 | T4 | phase 2 | AWS_VPC_FLOW | Drop ACCEPT, keep REJECT | 55% | ~0.12 | ⚠️ needs 1 sample |

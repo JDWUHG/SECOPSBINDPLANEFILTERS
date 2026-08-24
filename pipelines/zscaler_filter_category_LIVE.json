@@ -1,0 +1,20 @@
+{
+  "_status": "LIVE — deployed 24 Aug 2026 (pipeline updateTime 2026-08-24T09:36:03). Category-based Zscaler drop rule.",
+  "_note": "This is the user's own rule (better than the drafted domain-based Z2-Z4). Drops allowed + no-threat traffic by Zscaler category_details rather than by hostname - a broader, more robust net that auto-covers all domains in each category and uses the org's own EMIS whitelists. The drafted domain rules Z2-Z4 in zscaler_filter.json were NOT deployed and are SUPERSEDED by this.",
+  "_safety": "Guards retained: only drops when action=Allowed AND threatcategory=None. Any threat-flagged traffic is kept regardless of category. Blocked traffic kept.",
+  "_categories_dropped": [
+    "Business and Economy",
+    "Other Business and Economy",
+    "Exception Dynatrace",
+    "EMIS SSL Bypass",
+    "EMIS - AWS Cloud Connector Whitelist",
+    "EMIS GitHub Runners Whitelist",
+    "AAA_SSL_Microsoft_Windows_Endpoint_Optimization",
+    "AAA_SSL_Apple_Domains",
+    "Zscaler Proxy IPs"
+  ],
+  "_ui_regex": "(?s:\"action\"\\s*:\\s*\"Allowed\".*?\"category_details\"\\s*:\\s*\"(?:(?:Other )?Business and Economy|Exception Dynatrace|EMIS SSL Bypass|EMIS - AWS Cloud Connector Whitelist|EMIS GitHub Runners Whitelist|AAA_SSL_Microsoft_Windows_Endpoint_Optimization|AAA_SSL_Apple_Domains|Zscaler Proxy IPs)\".*?\"threatcategory\"\\s*:\\s*\"None\")",
+  "_estimated_saving": "~0.7-1.4 TB/month (mid ~1.1). Dominated by 'Business and Economy' (typically the largest browsing category). Confirm against ~95 GB/day webproxy baseline.",
+  "displayName": "ZSCALER_Filter",
+  "pipelineId": "7d023b21-3b13-4580-9174-a86b14dace06"
+}
