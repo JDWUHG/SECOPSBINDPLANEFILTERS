@@ -1,162 +1,81 @@
-# Google SecOps — Filter Schedule
+# BindPlane SecOps Filtering — Work Schedule & Ingestion Savings
 
-The **single register** of every filter/pipeline in scope for Google SecOps ingestion.
+**Instance:** `app.bindplane.com` · **Project:** Google SecOps UK (`01KC4W80ECMCJ8QJ9AG85S9S5J`)
+**Target:** 4.5 TB/month ingestion · **Baseline:** ~19.9 TB/month (all sources) / ~21 TB/month peak
 
-- **SecOps Pipelines** (the `/secops-pipelines` view) are the named volume-reduction filters — this is the primary list you asked for.
-- Reconciled from the live instance via `export-filters.sh` (REST for processors/configs + GraphQL `secOpsPipelineSummaries` for the SecOps Pipelines).
-
-> Source of truth for **review** = this file. Source of truth for **runtime** = the live instance. Reconcile after every change.
-
-**Last reconciled:** 2026-08-22 (snapshot `20260822T072129Z`)
-**Instance:** `https://app.bindplane.com`
-**Project:** Google SecOps UK (`01KC4W80ECMCJ8QJ9AG85S9S5J`)
+> Units: decimal TB (GB ÷ 1000³, matching the SecOps ingestion query). Daily = 30-day total ÷ 30;
+> monthly = daily × 30.44. Savings estimates are structural until confirmed by BL-02 (weekday measure).
 
 ---
 
-## 1. SecOps Pipelines — named volume-reduction filters
+## 1. WORK DONE (deployed & verified)
 
-> Source: GraphQL `secOpsPipelineSummaries` (the `/secops-pipelines` UI page). Times are UTC.
+| Date | Log source | What was filtered | Cut | Saved TB/mo | Verify |
+|------|-----------|-------------------|-----|-------------|--------|
+| 21 Aug | MICROSOFT_INSIGHTS_COMPONENTS | Source removed entirely | 100% | ~0.83 | Confirmed 0 GB/day |
+| 22 Aug | AZURE_SQL | Drop diagnostic/perf/health categories (R1) + BATCH STARTED (R2) + Azure Monitor metrics (R3); redact SQL statement text | ~92% | ~5.74 | JSON-verified; BL-01 (redaction output) open |
+| 22 Aug | AWS_CLOUDTRAIL | Drop `readOnly:true` (Rule A) + `invokedBy` AWS-service automation (Rule B), on top of existing name-list rules | ~80% | ~5.20 | JSON-verified byte-for-byte |
+| 22 Aug | ZSCALER_WEBPROXY | Rule Z1 — drop allowed + no-threat browsing to Microsoft/Office/Windows/Azure (plus existing Darktrace rule) | partial | ~0.4 | JSON-verified |
+| **Total banked** | | | | **~12.2 TB/mo** | |
 
-| Filter | Purpose | Log type(s) | Created | Last modified |
-|--------|---------|-------------|---------|---------------|
-| **AWS_Filter** | CloudTrail log volume reduction | _(none set)_ | 2026-08-14 | 2026-08-19 |
-| **AWS_Filter2** | AWS WAF log volume reduction | _(none set)_ | 2026-08-17 | 2026-08-20 |
-| **Azure_SQL_Filter** | Azure SQL log — **heavily filtered per governance decision 20/08/2026** | `AZURE_SQL` | 2026-08-18 | **2026-08-22** (3 processors, up from 2) |
-| **Microsoft_Insights_Components** | _(no description)_ | `MICROSOFT_INSIGHTS_COMPONENTS` | 2026-08-20 | 2026-08-20 |
-| **ZSCALER_Filter** | Zscaler Webproxy filter | _(none set)_ | 2026-08-21 | 2026-08-21 |
-
-**Pipeline IDs (for API/automation):**
-
-| Filter | ID |
-|--------|-----|
-| AWS_Filter | `c072e6b7-0690-419c-82ca-901b7ab2bc3f` |
-| AWS_Filter2 | `6f17d9b9-8874-4c5b-9a54-eca796841abc` |
-| Azure_SQL_Filter | `9c7b26bd-11f3-432f-a7df-a30b56a8955f` |
-| Microsoft_Insights_Components | `54d1435e-1c44-44f3-a581-ee7ff2a83448` |
-| ZSCALER_Filter | `7d023b21-3b13-4580-9174-a86b14dace06` |
-
-### Detailed rules
-
-| Filter | Detailed rules doc |
-|--------|--------------------|
-| Azure_SQL_Filter | [`../pipelines/AZURE_SQL_FILTER_DESIGN.md`](../pipelines/AZURE_SQL_FILTER_DESIGN.md) — **LIVE as of 2026-08-22**, verified state: [`azure_sql_filter_LIVE_20260822.json`](../pipelines/azure_sql_filter_LIVE_20260822.json). Original 2-rule baseline: [`azure_sql_filter.json`](../pipelines/azure_sql_filter.json) |
-| AWS_Filter | Live: 3 enumerated eventName drop rules (read-only Describe/Get/List; rule 2 ~97% redundant with rule 1). Proposed 2 new rules + rationale in [`../pipelines/aws_cloudtrail_filter.json`](../pipelines/aws_cloudtrail_filter.json); deploy guide [`../pipelines/DEPLOY_AWS_CLOUDTRAIL.md`](../pipelines/DEPLOY_AWS_CLOUDTRAIL.md). Feed `2ff7b983-...`. KMS Encrypt/GenerateDataKey drop = prior decision, left as-is. |
-| AWS_Filter2 | _(not yet captured)_ |
-| Microsoft_Insights_Components | _(not yet captured)_ |
-| ZSCALER_Filter | Live: 1 rule (drop Darktrace sensor phone-home). Captured + proposed extension in [`../pipelines/zscaler_filter.json`](../pipelines/zscaler_filter.json); deploy guide [`../pipelines/DEPLOY_ZSCALER.md`](../pipelines/DEPLOY_ZSCALER.md). Note: filter is scoped to ONE feed (`02d280ff-...`). |
-
-> **Important — where the rules live:** these SecOps Pipelines are **Google SecOps `logProcessingPipelines`** (Chronicle API resources) authored via BindPlane's SecOps UI. They are NOT BindPlane configuration/processor resources, so BindPlane's REST/GraphQL read APIs do **not** return the rule bodies (only the summary list). To capture a pipeline's detailed rules, export its definition from the SecOps side (the `logProcessingPipelines` API / UI export) — that JSON is the authoritative source.
+**Post-work run-rate (Sat 22 Aug, like-for-like vs a normal Saturday): ~63% overall reduction.**
+Projected new run-rate ~7.8–8 TB/month (confirm on first full weekday — BL-02).
 
 ---
 
-## Volume baseline (BL-02 measurement anchor)
+## 2. WORK SCHEDULE (planned BindPlane changes)
 
-Captured from the SecOps "Log Volume (GB) by Log Type — Last 30 Days" report,
-window **24 Jul → 22 Aug 2026 09:42**. This is the **BEFORE** baseline: today's filters
-(CloudTrail A+B, Azure SQL exclude+redact, Zscaler Z1) went live only in the final ~1–2h
-of this window, so their impact is NOT reflected here yet. Re-measure the daily figure in
-24–48h and compare against the daily-average column below.
+All are **Filter by Regex** processors (Action `Exclude`, Match `Body`, Field empty) on the named
+SecOps pipeline, unless noted. Full paste-ready regexes in `../pipelines/REMAINING_TARGETS_SPEC.md`.
 
-| Log type | 30-day total GB | Daily avg GB | Events (30d) | Touched today? |
-|----------|----------------:|-------------:|-------------:|----------------|
-| AWS_CLOUDTRAIL | 6400.25 | **213.34** | 3,516,895,644 | ✅ Rules A+B |
-| AZURE_SQL | 6150.23 | **205.01** | 2,096,953,617 | ✅ exclude R1/R3 + redaction |
-| ZSCALER_WEBPROXY | 2840.63 | **94.69** | 2,204,620,828 | ✅ Rule Z1 (Microsoft only so far) |
-| AWS_WAF | 1953.45 | 65.12 | 854,900,072 | — (AWS_Filter2, not yet reviewed) |
-| AZURE_ACTIVITY | 842.41 | 28.08 | 410,974,487 | — |
-| MICROSOFT_INSIGHTS_COMPONENTS | 816.13 | 27.20 | 196,123,987 | ✅ **removed 21 Aug** — now 0 GB/day |
-| AZURE_GATEWAY | 814.02 | 27.13 | 404,780,203 | — |
-
-> Notes:
-> - **MICROSOFT_INSIGHTS_COMPONENTS is already at 0 GB / 0 events today** — confirmed as a
->   deliberate removal on 2026-08-21 (not a broken feed). ~27 GB/day already banked.
-> - The three filters deployed today target the **top 3 log types by volume** — the changes
->   were made exactly where the volume is.
-> - Column values are: 30-day total / daily average / event count, as read from the report.
-
-## Early results (BL-02 — first read, caveated)
-
-First "after" snapshot taken **22 Aug 2026 ~09:42** (partial day). Compared to the 30-day
-daily-average baseline. **Caveat:** this is a partial **Saturday** morning, so absolute
-percentages are inflated by both the short window and lower weekend traffic — treat the
-DIRECTION as real and strong, but confirm exact figures against a full weekday.
-
-Projected-to-24h (partial ×24/9.7) vs baseline daily average:
-
-| Log type | Baseline GB/day | Projected today | Δ (caveated) | Event-count Δ |
-|----------|----------------:|----------------:|-------------:|--------------:|
-| AZURE_SQL | 205 | ~16 | **−92%** | −92% |
-| AWS_CLOUDTRAIL | 213 | ~42 | **−80%** | −84% |
-| AWS_WAF | 65 | ~16 | −76% | — |
-| AZURE_GATEWAY | 27 | ~9 | −65% | — |
-| AZURE_ACTIVITY | 28 | ~17 | −39% | — |
-| ZSCALER_WEBPROXY | 95 | ~70 | −26% | −25% |
-
-> - All these log types were filtered as part of this programme (not just the 3 in earlier notes).
-> - The steep **event-count** drops for Azure SQL (−92%) and CloudTrail (−84%) are the strongest
->   evidence the event-dropping rules are biting — event count is a direct measure of records removed.
-> - **Zscaler shows the smallest drop (−26%)** — expected, because only Rule Z1 (Microsoft) is live;
->   Z2–Z4 (Google/Apple/CDN) are still parked. Deploying those should increase the Zscaler reduction.
-> - **Confirm on a full weekday** (e.g. compare next Monday vs a typical pre-change Monday) to get
->   the true, un-inflated numbers.
-
-## Trend status (as of 2026-08-22)
-
-**Heading clearly in the right direction.** Multi-day ramp-down visible in daily totals as filters
-were deployed (Fri 21 Aug already ~26% below a normal weekday; Sat 22 Aug ~63% below a normal
-Saturday). Today's biggest changes (Azure SQL exclude+redact, CloudTrail A+B) went live only in the
-last ~1–2h, so today's figure UNDER-counts the true impact — the first full post-change weekday is
-the definitive read. Projected new run-rate ~7.8 TB/month vs ~21 TB baseline; target 4.5 TB.
-
-**Next actions:** (1) BL-09 deploy Zscaler Z2–Z4 on 23 Aug; (2) BL-02 confirm on first full weekday.
-
-## Backlog / follow-up checks
-
-| ID | Item | Why it matters | Status |
-|----|------|-----------------|--------|
-| BL-01 | **Verify `redact_sensitive_data` output on Azure_SQL_Filter.** Confirm the custom rule `"statement":"[^"]*"` redacts only the SQL text value, not the surrounding `"statement":` key label too. Check a live/recent AZURE_SQL log entry in BindPlane/SecOps. Either outcome is safe (no data leak either way) — but if the key label is also redacted, downstream parsing/readability could be affected. See `../pipelines/AZURE_SQL_FILTER_DESIGN.md` for the two possible outcomes to look for. | Deployed 2026-08-22T09:00:02 without this check due to time constraints. | ⏳ Open |
-| BL-02 | **Measure actual AZURE_SQL volume reduction** from the R1+R3 exclude filters and the redact processor. Break down by `category`, and within `SQLSecurityAuditEvents` by `action_name` + average event size, to size the real saving and decide if further work (R4, dedup, asset-scoped filtering) is worth pursuing. | Nothing has been measured yet — all reduction estimates so far are structural, not observed. | ⏳ Open |
-| BL-03 | **Confirm no live SecOps detection depends on `Blocks` or `Deadlocks`** (Azure SQL categories added in R1). One-line confirmation needed from Cyber Defence. | Gate on R1 that was never formally closed before deploying. | ⏳ Open |
-| BL-04 | **Decide on `Errors` category** — drop as operational noise, or retain for investigation value (failed statements, injection attempts)? Currently retained (not dropped) by default. | Open decision from the governance decision paper, not yet actioned. | ⏳ Open |
-| BL-05 | **Apply the same zero-evidentiary-cost review to remaining filters.** Done: AWS_Filter (CloudTrail), ZSCALER_Filter (Microsoft rule only). Remaining: **AWS_Filter2 (AWS_WAF, ~65 GB/day — next biggest untouched)**, Microsoft_Insights_Components (already removed 21 Aug). Zscaler Z2–Z4 (Google/Apple/CDN) still parked. | Partially done. AWS_WAF is the largest remaining untouched source. | ⏳ In progress |
-| BL-10 | **AWS_WAF (AWS_Filter2): drop ALLOW traffic — the biggest untapped win.** Current live filter (pipeline `6f17d9b9-...`) has ONE narrow rule that only drops monitoring/health-check user-agents (ELB-HealthChecker, Blackbox Exporter, Grafana, Java-EurekaClient on ALB). The main lever — dropping WAF `action=ALLOW` and keeping `BLOCK`/`COUNT` — is **completely unused**. WAF baseline ~65 GB/day (~1,953 GB/30d, #4 source); typically 80–95% is ALLOW → **potential ~1.5 TB/month gain**, likely the single largest remaining opportunity. **Blocked by:** (1) need ONE real WAF event to confirm how the allow/block decision is recorded (`action` field value/nesting — getting this wrong risks dropping attacks instead of noise); (2) explicit sign-off to drop WAF ALLOW keeping BLOCK — same trade-off already accepted for Zscaler, but WAF protects public-facing apps so confirm consciously. Security logic: BLOCK = attacks the WAF stopped (keep); ALLOW = normal passed traffic (bulk volume, low value); undetected attacks in ALLOW are covered by app/CloudTrail/other layers. Note: agent has NO access to live WAF log content — sample must come from the SecOps/BindPlane UI. | Highest-value remaining safe-ish win (~1.5 TB/mo), but needs a sample + sign-off before building. | ⏳ Open |
-| BL-09 | **Zscaler: deploy the parked rules Z2, Z3, Z4** (drop allowed + no-threat browsing to Google / Apple / major CDNs). Built, safety-tested, and paste-ready in `../pipelines/DEPLOY_ZSCALER.md`. Scheduled for **2026-08-23**. Add each as a "Filter by Regex" processor (Action=Exclude, Match=Body, Field empty), one at a time, then Rollout and verify via JSON export. Expected to raise Zscaler reduction well beyond the current ~26% (only Z1/Microsoft is live). ~1 TB/month toward the 4.5 TB target. | **QUEUED for 23 Aug.** All content ready in DEPLOY_ZSCALER.md. | ⏳ Queued |
-| BL-07 | **Zscaler: add a "drop all blocked" rule.** Owner confirmed blocked traffic is reviewed in the Zscaler console and needn't be in SecOps. Needs one real Zscaler event to confirm the exact `action` value for blocked (`Blocked`/`Denied`/etc.) before building. | Biggest remaining Zscaler saving after the trusted-domain drops; safe once the value is confirmed. | ⏳ Open |
-| BL-08 | **Zscaler: confirm whether more than one Zscaler feed** flows into SecOps. The current filter is scoped to a single feed (`02d280ff-...`); other feeds would need the same rules. | Filters scoped per-feed; other feeds get no reduction until covered. | ⏳ Open |
-| BL-06 | **Rotate the BindPlane API keys** used during this session (both the original `bp_...` key and the `bps_...` Google SecOps UK key) — they were shared in chat and should be treated as exposed. | Basic credential hygiene. | ⏳ Open |
-
-## 2. Other SecOps processing on the instance (context)
-
-### Reusable Blueprint bundles (library)
-
-| Bundle | Purpose | Key steps |
-|--------|---------|-----------|
-| `crowdstrike-falcon-google-secops-volume-reduction` | Cut CrowdStrike Falcon FDR volume | parse_json → drop low-signal / benign DNS / RFC1918 → prune → dedup → SecOps standardization |
-| `reduce-cloudtrail-logs` | Drop read-only AWS CloudTrail | parse_json → filter read-only → delete empty |
-
-### Inline processors on live config
-
-| Config → destination | Processors |
-|----------------------|-----------|
-| `OptumUKWinEvtLog` → `ptmkc` (Chronicle) | `copy_field` (host.name → ingestion_source label), `batch` (1024/2048/10s) |
+| ID | When | Log source | Processor to add | Cut | Saved TB/mo | Ready? |
+|----|------|-----------|------------------|-----|-------------|--------|
+| T2 | **23 Aug** | ZSCALER_WEBPROXY | Z2 Google, Z3 Apple, Z4 CDN (allowed+no-threat) | +45% | ~1.30 | ✅ built & tested |
+| T1 | on sample+signoff | AWS_WAF | Drop `action=ALLOW` (keep BLOCK/COUNT) | 75% | ~1.49 | ⚠️ needs 1 sample + sign-off |
+| T3 | phase 2 | ZSCALER_ZPA | Drop allowed + no-threat | 40% | ~0.09 | confirm feed fields |
+| T4 | phase 2 | AWS_VPC_FLOW | Drop ACCEPT, keep REJECT | 55% | ~0.12 | ⚠️ needs 1 sample |
+| T5 | phase 2 | ZSCALER_DNS | Drop trusted-domain resolutions | 40% | ~0.09 | confirm field |
+| T6 | phase 2 | ZSCALER_FIREWALL | Drop allowed/permitted flows | 45% | ~0.08 | confirm value |
+| T7 | phase 2 | AZURE_STORAGE_AUDIT | Drop routine read/get/list ops | 55% | ~0.07 | confirm field |
+| T8 | phase 2 | AZURE_DOCUMENTDB | Drop routine data-plane reads | 45% | ~0.05 | confirm field |
+| T9 | phase 2 | AZURE_WAF | Drop ALLOW, keep BLOCK | 60% | ~0.02 | confirm field |
+| T10 | phase 2 | GCP_CLOUDAUDIT | Drop read-only / DATA_READ | 50% | ~0.00 | confirm structure |
+| — | phase 2 | AZURE_DATAPLANE / NSG_FLOW / FIREWALL / ServiceBus / Barracuda | Drop request/allow/read noise | ~40% | ~0.10 | assess per source |
+| **Total planned** | | | | | **~3.4 TB/mo** | |
 
 ---
 
-## How to refresh this schedule
+## 3. TARGET INGESTION SAVINGS (running total to 4.5 TB/mo)
 
-```bash
-cd inventory
-cp .env.example .env      # set BINDPLANE_URL, BINDPLANE_API_KEY, BINDPLANE_ACCOUNT_ID
-./export-filters.sh       # writes a timestamped snapshot + prints the SecOps Pipelines
-```
+| Stage | TB/month | Note |
+|-------|---------:|------|
+| Baseline (all sources) | ~19.9 | pre-any-work |
+| After work DONE (section 1) | **~7.8** | ~63% cut, deployed 21–22 Aug |
+| After T2 (Zscaler Z2–Z4) | ~6.9 | ready now |
+| After T1 (AWS_WAF ALLOW) | **~5.5** | biggest single remaining lever |
+| After T3–T10 + tail (phase 2) | **~4.7** | long tail of smaller wins |
+| **Target** | **4.5** | |
+
+**Verdict:** completing the full schedule lands ~4.7 TB/mo — essentially at target. **T1 + T2 deliver
+the vast majority of the remaining gain; T3–T10 are a ~0.3 TB tail.** Margin to 4.5 is thin — if AWS_WAF
+is less ALLOW-heavy than the 75% assumption, expect to land nearer 5 TB and the deferred higher-risk
+options (aggressive Azure SQL / Zscaler drop-allowed) would need sign-off to close the last gap.
 
 ---
 
-## Change log
+## 4. OPEN ITEMS (housekeeping — no volume impact)
 
-| Date | Change | By |
-|------|--------|-----|
-| 2026-08-22 | Located the 5 SecOps Pipeline filters via GraphQL `secOpsPipelineSummaries` and recorded them (AWS_Filter, AWS_Filter2, Azure_SQL_Filter, Microsoft_Insights_Components, ZSCALER_Filter). Added GraphQL + account-header support to export-filters.sh. | export-filters.sh |
-| 2026-08-22 | Deployed & verified R1 (11-category exclude, superset of original 6) + R3 (Azure Monitor metrics exclude) on Azure_SQL_Filter. Now 3 processors, zero-evidentiary-cost. Reduction not yet measured. | manual UI deploy, verified via JSON export |
-| 2026-08-22 | Deployed & verified ZSCALER_Filter Rule Z1 (drop allowed + no-threat browsing to Microsoft/Office/Windows/Azure). Now 2 processors (Darktrace + Microsoft). Z2/Z3/Z4 (Google/Apple/CDN) still pending manual add. Reduction not yet measured — watch dashboard. | manual UI deploy, verified via JSON export |
-| 2026-08-22 | Deployed & verified AWS_Filter (CloudTrail) Rule A (drop readOnly:true — AWS's own read-only classification) + Rule B (drop invokedBy AWS-service automation). Now 5 processors. Recon-detection use-case covered by existing GuardDuty feed. Reduction not yet measured — watch dashboard; Rule A likely makes the 3 enumerated rules largely redundant. | manual UI deploy, verified via JSON export |
+| ID | Item |
+|----|------|
+| BL-01 | Verify AZURE_SQL redaction blanks only the statement value, not the key label (check one live event) |
+| BL-02 | Measure actual reduction on first full weekday (turns estimates into real numbers) |
+| BL-03 | Confirm no live detection depends on `Blocks`/`Deadlocks` (Azure SQL) — Cyber Defence |
+| BL-04 | Decide: drop `Errors` category or keep (Azure SQL) |
+| BL-06 | Rotate the BindPlane API keys shared during setup |
+| BL-08 | Confirm single vs multiple Zscaler feeds (filters are per-feed) |
+
+---
+
+*Detailed rule definitions and rationale: `../pipelines/*.json`, `AZURE_SQL_FILTER_DESIGN.md`,
+`DEPLOY_*.md`, `REMAINING_TARGETS_SPEC.md`, `PATH_TO_4.5TB.md`. Live verified states:
+`*_LIVE*.json`.*
