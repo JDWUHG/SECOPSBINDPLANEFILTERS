@@ -46,10 +46,20 @@ SecOps pipeline, unless noted. Full paste-ready regexes in `../pipelines/REMAINI
 
 ---
 
-## RESULT — full 24h measurement (24 Aug 2026) ✅ TARGET MET
+## RESULT — full 24h measurement (Sunday 24 Aug 2026) — strong, target not yet confirmed
 
-First full-day post-change snapshot. **Overall ~84% reduction — projecting ~3.5 TB/month vs the
-4.5 TB target (under target with ~1 TB/mo headroom).** Baseline was ~703 GB/day (~21.4 TB/mo).
+First full-day post-change snapshot. **This day is a SUNDAY** — the lightest traffic day
+(pre-change weekends ~401 GB/day vs weekdays ~815 GB/day). So the raw ~116 GB day (~3.5 TB/mo
+if naively extrapolated) is NOT representative of a full month.
+
+**Corrected projection (applying the ~71% weekend reduction ratio to the real weekday/weekend
+split): ~6 TB/month** (range ~6–10 TB depending on how well weekdays cut). **Above the 4.5 TB
+target by ~1.5 TB — not yet met on a full-month basis.**
+
+The per-source **reduction percentages below are real and hold regardless of day** — only the
+absolute monthly total was flattered by it being a Sunday.
+
+Baseline was ~703 GB/day blended (~21.4 TB/mo).
 
 | Source | Baseline GB/day | Now (24h GB) | Cut |
 |--------|----------------:|-------------:|----:|
@@ -66,10 +76,11 @@ First full-day post-change snapshot. **Overall ~84% reduction — projecting ~3.
 | AZURE_STORAGE_AUDIT | 4 | 1.6 | −62% |
 | AWS_WAF | 65 | 27.1 | −58% |
 
-> Caveats: (1) confirm whether this 24h window is a weekday (steady-state) or weekend (weekdays
-> will run higher — real monthly likely still near/under 4.5). (2) AWS_WAF already −58% though only
-> the monitoring-UA rule was expected live — if the WAF ALLOW-drop (T1) is NOT yet deployed, there is
-> further headroom there. Target already met either way.
+> Caveats: (1) **This is a SUNDAY** — weekdays run ~2× a weekend day, so the true monthly figure is
+> ~6 TB, not 3.5. Confirm with ONE full weekday (Mon–Fri) post-change for the real steady-state.
+> (2) AWS_WAF already −58% though only the monitoring-UA rule was expected live — if the WAF ALLOW-drop
+> (T1) is NOT yet deployed, there is further headroom there (~1.5 TB), which is exactly what's needed
+> to close the ~1.5 TB gap to 4.5. **Target NOT yet confirmed met — need T1 + a weekday measurement.**
 
 ## 3. TARGET INGESTION SAVINGS (running total to 4.5 TB/mo)
 
