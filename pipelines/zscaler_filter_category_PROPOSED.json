@@ -1,5 +1,5 @@
 {
-  "_status": "LIVE — deployed 24 Aug 2026 (pipeline updateTime 2026-08-24T09:36:03). Category-based Zscaler drop rule.",
+  "_status": "NOT DEPLOYED (as of authoritative snapshot 24 Aug). This is the DRAFTED category rule the user intends to apply. The live ZSCALER_Filter currently has only Darktrace + Microsoft (Z1). Apply this then re-verify. (An earlier note wrongly marked it live off a stale updateTime.)",
   "_note": "This is the user's own rule (better than the drafted domain-based Z2-Z4). Drops allowed + no-threat traffic by Zscaler category_details rather than by hostname - a broader, more robust net that auto-covers all domains in each category and uses the org's own EMIS whitelists. The drafted domain rules Z2-Z4 in zscaler_filter.json were NOT deployed and are SUPERSEDED by this.",
   "_safety": "Guards retained: only drops when action=Allowed AND threatcategory=None. Any threat-flagged traffic is kept regardless of category. Blocked traffic kept.",
   "_categories_dropped": [

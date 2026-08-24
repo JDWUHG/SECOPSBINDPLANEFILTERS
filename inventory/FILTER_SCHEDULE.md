@@ -16,8 +16,15 @@
 | 22 Aug | AZURE_SQL | Drop diagnostic/perf/health categories (R1) + BATCH STARTED (R2) + Azure Monitor metrics (R3); redact SQL statement text | ~92% | ~5.74 | JSON-verified; BL-01 (redaction output) open |
 | 22 Aug | AWS_CLOUDTRAIL | Drop `readOnly:true` (Rule A) + `invokedBy` AWS-service automation (Rule B), on top of existing name-list rules | ~80% | ~5.20 | JSON-verified byte-for-byte |
 | 22 Aug | ZSCALER_WEBPROXY | Rule Z1 — drop allowed + no-threat browsing to Microsoft/Office/Windows/Azure (plus existing Darktrace rule) | partial | ~0.4 | JSON-verified |
-| 24 Aug | ZSCALER_WEBPROXY | **Category rule** — drop allowed + no-threat traffic in Zscaler `category_details`: Business and Economy (+Other), Exception Dynatrace, EMIS SSL Bypass, EMIS AWS Cloud Connector Whitelist, EMIS GitHub Runners Whitelist, AAA_SSL Microsoft Windows Endpoint Optimization, AAA_SSL Apple Domains, Zscaler Proxy IPs | large | ~1.1 (est; measure) | Rolled out (updateTime 24 Aug 09:36); confirm volume vs ~95 GB/day baseline |
-| **Total banked** | | | | **~13.3 TB/mo (est)** | |
+| **Total banked (deployed)** | | | | **~12.2 TB/mo (est)** | |
+
+**Confirmed live state (authoritative snapshot, pipeline JSON):**
+- **AWS_Filter (CloudTrail)** — 5 processors: 3 enumerated read-only name lists + Rule A `readOnly:true` + Rule B `invokedBy` AWS-service. ✓
+- **Azure_SQL_Filter** — 3 excludes (BATCH STARTED, metrics `timeGrain:PT`, 11 categories) + redaction (statement + PII presets). ✓
+- **ZSCALER_Filter** — 2 rules only: Darktrace + Microsoft (Z1). ✓
+- **AWS_Filter2 (WAF)** — **ONLY the monitoring-UA rule** (ELB-HealthChecker/Blackbox/Grafana/Eureka). No ALLOW filter. T1 still untapped.
+
+**NOT yet deployed:** Zscaler category rule (Business & Economy + EMIS whitelists), Zscaler Z2–Z4 domain rules (superseded by the category rule anyway), AWS_WAF ALLOW-drop (T1).
 
 **Post-work run-rate (Sat 22 Aug, like-for-like vs a normal Saturday): ~63% overall reduction.**
 Projected new run-rate ~7.8–8 TB/month (confirm on first full weekday — BL-02).
@@ -78,9 +85,10 @@ Baseline was ~703 GB/day blended (~21.4 TB/mo).
 
 > Caveats: (1) **This is a SUNDAY** — weekdays run ~2× a weekend day, so the true monthly figure is
 > ~6 TB, not 3.5. Confirm with ONE full weekday (Mon–Fri) post-change for the real steady-state.
-> (2) AWS_WAF already −58% though only the monitoring-UA rule was expected live — if the WAF ALLOW-drop
-> (T1) is NOT yet deployed, there is further headroom there (~1.5 TB), which is exactly what's needed
-> to close the ~1.5 TB gap to 4.5. **Target NOT yet confirmed met — need T1 + a weekday measurement.**
+> (2) **AWS_WAF's −58% is NOT from an ALLOW filter** — authoritative snapshot confirms WAF has ONLY
+> the monitoring-UA rule. The −58% is lighter Sunday traffic + that narrow rule. So the WAF ALLOW-drop
+> (T1, ~1.5 TB) is **still fully untapped** — that headroom is intact and is exactly what closes the
+> ~1.5 TB gap to 4.5. **Target NOT yet met — need T1 (WAF ALLOW) + Zscaler category rule + a weekday measurement.**
 
 ## 3. TARGET INGESTION SAVINGS (running total to 4.5 TB/mo)
 
