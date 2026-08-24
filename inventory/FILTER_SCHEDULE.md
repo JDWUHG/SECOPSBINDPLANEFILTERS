@@ -46,6 +46,31 @@ SecOps pipeline, unless noted. Full paste-ready regexes in `../pipelines/REMAINI
 
 ---
 
+## RESULT — full 24h measurement (24 Aug 2026) ✅ TARGET MET
+
+First full-day post-change snapshot. **Overall ~84% reduction — projecting ~3.5 TB/month vs the
+4.5 TB target (under target with ~1 TB/mo headroom).** Baseline was ~703 GB/day (~21.4 TB/mo).
+
+| Source | Baseline GB/day | Now (24h GB) | Cut |
+|--------|----------------:|-------------:|----:|
+| AWS_CLOUDTRAIL | 213 | 3.7 | −98% |
+| AZURE_SQL | 205 | 23.0 | −89% |
+| AZURE_GATEWAY | 27 | 7.8 | −71% |
+| ZSCALER_DNS | 7 | 2.1 | −71% |
+| ZSCALER_WEBPROXY | 95 | 29.0 | −69% |
+| AZURE_ACTIVITY | 28 | 9.2 | −67% |
+| AZURE_DOCUMENTDB | 4 | 1.3 | −67% |
+| ZSCALER_ZPA | 8 | 2.7 | −65% |
+| AWS_VPC_FLOW | 7 | 2.8 | −62% |
+| ZSCALER_FIREWALL | 6 | 2.2 | −62% |
+| AZURE_STORAGE_AUDIT | 4 | 1.6 | −62% |
+| AWS_WAF | 65 | 27.1 | −58% |
+
+> Caveats: (1) confirm whether this 24h window is a weekday (steady-state) or weekend (weekdays
+> will run higher — real monthly likely still near/under 4.5). (2) AWS_WAF already −58% though only
+> the monitoring-UA rule was expected live — if the WAF ALLOW-drop (T1) is NOT yet deployed, there is
+> further headroom there. Target already met either way.
+
 ## 3. TARGET INGESTION SAVINGS (running total to 4.5 TB/mo)
 
 | Stage | TB/month | Note |
