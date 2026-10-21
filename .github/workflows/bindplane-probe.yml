@@ -30,6 +30,11 @@ jobs:
       - name: Probe API (status codes only)
         run: bash inventory/probe-api.sh probe-out
 
+      - name: Schema discovery via validation errors (messages only)
+        run: |
+          sudo apt-get install -y jq >/dev/null 2>&1 || true
+          bash inventory/probe-extra.sh probe-out
+
       - name: Export current inventory (REST + summaries)
         run: |
           sudo apt-get install -y jq >/dev/null 2>&1 || true
