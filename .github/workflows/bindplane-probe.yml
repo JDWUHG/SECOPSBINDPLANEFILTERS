@@ -1,0 +1,45 @@
+name: BindPlane API probe (read-only)
+
+# Manual trigger only. Read-only calls. This repository is PUBLIC, so:
+#   - response bodies are never printed to the log (status codes only)
+#   - output is uploaded as a 1-day artifact, NOT committed
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BINDPLANE_URL: ${{ secrets.BINDPLANE_URL }}
+      BINDPLANE_API_KEY: ${{ secrets.BINDPLANE_API_KEY }}
+      BINDPLANE_ACCOUNT_ID: ${{ secrets.BINDPLANE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets are present (names only)
+        run: |
+          for v in BINDPLANE_URL BINDPLANE_API_KEY BINDPLANE_ACCOUNT_ID; do
+            if [ -z "${!v}" ]; then echo "MISSING: $v"; MISSING=1; else echo "present: $v"; fi
+          done
+          [ -z "${MISSING:-}" ]
+
+      - name: Probe API (status codes only)
+        run: bash inventory/probe-api.sh probe-out
+
+      - name: Export current inventory (REST + summaries)
+        run: |
+          sudo apt-get install -y jq >/dev/null 2>&1 || true
+          bash inventory/export-filters.sh > /dev/null 2>&1 || echo "export-filters.sh exited non-zero"
+          ls inventory/snapshots | tail -3
+          mkdir -p probe-out/inventory && cp -r "inventory/snapshots/$(ls inventory/snapshots | grep -E '^[0-9]{8}T' | tail -1)" probe-out/inventory/ 2>/dev/null || true
+
+      - name: Upload artifact (1 day)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindplane-probe
+          path: probe-out
+          retention-days: 1
