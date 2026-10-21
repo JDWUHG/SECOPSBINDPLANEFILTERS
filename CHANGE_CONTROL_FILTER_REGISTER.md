@@ -64,7 +64,7 @@ This document is the register of every filter applied to log feeds passing throu
 | F-02 | Azure_SQL_Filter | AZURE_SQL | Drop 11 diagnostic / performance categories | Exclude | LIVE | 22 Aug 2026 | ↑ |
 | F-03 | Azure_SQL_Filter | AZURE_SQL | Drop Azure Monitor platform metrics | Exclude | LIVE | 22 Aug 2026 | ↑ |
 | F-04 | Azure_SQL_Filter | AZURE_SQL | Redact PII presets + SQL `statement` text | Redact | LIVE | 22 Aug 2026 | ↑ |
-| F-05 | AWS_Filter | AWS_CLOUDTRAIL | 3 enumerated read-only `eventName` lists (~800 names) | Exclude | LIVE | 19 Aug 2026 | ~5.20 combined (F-05 to F-07) |
+| F-05 | AWS_Filter | AWS_CLOUDTRAIL | 3 enumerated `eventName` lists (~800 names; list 1 of 3 captured: 87 names, incl. 8 non-read) | Exclude _(Action to be confirmed on screen)_ | LIVE _(as of v8 — re-verify)_ | 19 Aug 2026 | ~5.20 combined (F-05 to F-07) |
 | F-06 | AWS_Filter | AWS_CLOUDTRAIL | Rule A — drop `readOnly:true` | Exclude | LIVE | 22 Aug 2026 | ↑ |
 | F-07 | AWS_Filter | AWS_CLOUDTRAIL | Rule B — drop AWS-service `invokedBy` | Exclude | LIVE | 22 Aug 2026 | ↑ |
 | F-08 | AWS_Filter2 | AWS_WAF | Drop monitoring-agent User-Agents (ALB) | Exclude | LIVE | 20 Aug 2026 | minor |
@@ -177,13 +177,14 @@ This document is the register of every filter applied to log feeds passing throu
 | **Processors (in order)** | 1–3. Enumerated read-only `eventName` lists · 4. Rule A (`readOnly:true`) · 5. Rule B (`invokedBy`) |
 | **Basis** | CloudTrail separates "who looked" (read) from "who changed something" (write). Attacks are predominantly writes, so all writes are kept. Reconnaissance detection relies on GuardDuty. |
 
-#### F-05 — Enumerated read-only `eventName` lists
+#### F-05 — Enumerated `eventName` drop lists
 | | |
 |---|---|
-| **Configuration** | Three Filter by Regex processors listing ~800 read-only event names, including KMS `Encrypt` / `GenerateDataKey`. **Regexes to be attached as Appendix A.** |
-| **Rationale** | Original volume reduction of high-frequency read events. |
-| **Conditions** | Attach exported regexes. Record the approver of the KMS drop decision. Largely redundant with F-06; may be simplified later under a separate change. |
-| **Residual risk** | Low–Medium (KMS key-usage visibility is removed). |
+| **Configuration** | Three Filter by Regex processors, exact-match `eventName` lists (~800 names in total). **Processor 1 captured (processor name "Cloudtrail Filter", 87 unique names, pipeline now v8):** `eventName"\s*:\s*"(<87 names>)"` — whole-body match, exact names only (`EncryptSomething` does not match). Full list in Appendix C. **Processors 2 and 3 still to be captured.** The Action / Match / Field values were not visible in the capture — confirm **Action = Exclude, Match = Body, Field empty**. |
+| **What list 1 contains** | 79 Describe / List / Get / BatchGet operations (read-only), **plus 8 that are not reads**: `UpdateInstanceInformation`, `UpdateInstanceAssociationStatus` (SSM agent heartbeat), `UpdatePartition`, `UpdateColumnStatisticsForPartition` (Glue), `CreateLogStream` (CloudWatch Logs), `PutEvaluations` (AWS Config), and KMS `GenerateDataKey` and `Encrypt`. |
+| **Rationale** | High-frequency service and agent chatter. The 8 non-read names are routine automated calls from agents and managed services. The KMS drop is a recorded prior decision (approver not recorded). |
+| **Conditions** | (1) Capture and attach processors 2 and 3. (2) Record the approver of the KMS `Encrypt` / `GenerateDataKey` decision. (3) Because the 8 non-read names are **not** covered by Rule A (F-06), they are an independent source of savings and cannot be removed under the "redundant with Rule A" cleanup without losing it. (4) Confirm one record per log body (see F-06 condition). |
+| **Residual risk** | Low–Medium. Write-type names are limited to the 8 above. `Encrypt` / `GenerateDataKey` volume anomalies (e.g. bulk data-key generation) are not visible. |
 
 #### F-06 — Rule A: drop `readOnly:true`
 | | |
@@ -354,3 +355,13 @@ Also confirm what happened to `Azure_SQL_Filter` (absent from the live list) and
 | AWS_Filter2 | `pipelines/aws_waf_filter_LIVE.json` |
 | ZSCALER_Filter | `pipelines/zscaler_filter.json`; `pipelines/zscaler_filter_category_PROPOSED.json`; `pipelines/DEPLOY_ZSCALER.md` |
 | Proposed filters | `pipelines/REMAINING_TARGETS_SPEC.md` |
+
+## Appendix C — Captured processor definitions
+
+### C.1 AWS_Filter, processor 1 ("Cloudtrail Filter") — captured 21 Oct 2026, pipeline v8
+
+Regex (87 event names):
+
+```
+eventName"\s*:\s*"(DescribeReservedInstances|DescribeInstances|DescribeVolumes|DescribeSnapshots|DescribeTags|DescribeRegions|DescribeAvailabilityZones|DescribeSecurityGroups|DescribeNetworkInterfaces|DescribeSubnets|DescribeVpcs|DescribeAddresses|DescribeImages|ListTagsForResource|GetResources|DescribeDBInstances|DescribeLoadBalancers|DescribeAutoScalingGroups|DescribeStacks|ListMetrics|GetMetricData|GetMetricStatistics|DescribeAlarms|DescribeLogGroups|DescribeLogStreams|GetPartition|GetTableVersions|GetPartitions|GetColumnStatisticsForPartition|UpdateColumnStatisticsForPartition|DescribeClusters|DescribeDBParameterGroups|DescribeManagedPrefixLists|GetLogEvents|GetSamplingRules|ListClusters|DescribeTransitGatewayAttachments|UpdateInstanceInformation|GetDeploymentConfig|BatchGetImage|ListTasks|ListFunctions20150331|UpdatePartition|DescribeTasks|GetPolicy20150331v2|ListTags20170331|GetFunctionUrlConfig|GetServiceSetting|GetComplianceDetailsByConfigRule|GetDatabase|GetDomainNames|ListLayers20181031|DescribeTargetHealth|ListEndpoints|ListInstances|ListAssessmentRuns|ListPlatformApplications|GetRestApis|DescribeReplicationInstances|DescribeCacheSubnetGroups|DescribeConnections|ListModels|DescribeVirtualInterfaces|GetSecurityConfigurations|DescribeReservedCacheNodes|DescribeDirectories|GetClientCertificates|DescribeSSLPolicies|DescribeCacheEngineVersions|UpdateInstanceAssociationStatus|ListIdentityPools|ListInstanceAssociations|CreateLogStream|DescribeEnvironments|GetApis|ListVaults|GetTable|PutEvaluations|ListUserPools|ListResources|ListGroupMemberships|BatchGetPartition|ListServers|DescribeDBParameters|ListTags|GenerateDataKey|Encrypt)"
+```
