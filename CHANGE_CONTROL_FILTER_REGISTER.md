@@ -4,7 +4,7 @@
 | | |
 |---|---|
 | **Document ID** | CC-SECOPS-FLT-001 |
-| **Version / status** | 0.2 — DRAFT for approval |
+| **Version / status** | 0.3 — DRAFT — **not ready for approval (see §0)** |
 | **Date** | 21 Oct 2026 |
 | **Platform** | BindPlane (`app.bindplane.com`) · Google SecOps UK (project `01KC4W80ECMCJ8QJ9AG85S9S5J`) |
 | **SecOps tenant** | GCP project `721279881207` · `europe-west2` · customer `c98f7d82-a2a4-45a1-a96a-a4dee6cf39fd` |
@@ -15,11 +15,40 @@
 
 ---
 
+## 0. Live inventory check — 21 Oct 2026 (BindPlane API)
+
+The live instance was queried through the BindPlane API on 21 Oct 2026. **Rule content is not available through the API** (GraphQL introspection is disabled and the pipeline summary exposes only metadata), so the rules in §4 are as last exported (20–24 Aug 2026) and **have not been re-verified**. The pipeline inventory below is current.
+
+**The live instance has 15 SecOps pipelines. This register's §4 covers 5 of them, and several have changed since the export it is based on.**
+
+| Pipeline | Log type | Created | Last updated | Register coverage |
+|---|---|---|---|---|
+| AWS_Filter | _(none)_ | 14 Aug | **27 Aug** | §4.2 — **changed after export; re-verify** |
+| AWS_Filter2 | _(none)_ | 17 Aug | **26 Aug** | §4.3 — **changed after export; re-verify** |
+| ZSCALER_Filter | UDM | 21 Aug | **25 Aug** | §4.4 — **changed after export; log type now UDM; re-verify** |
+| Microsoft_Insights_Components → now `MICROSOFT_INSIGHTS_COMPONENTS` | MICROSOFT_INSIGHTS_COMPONENTS | 25 Aug | 25 Aug | §4.5 — **pipeline recreated 25 Aug; re-verify** |
+| `Azure_SQL_Filter` | AZURE_SQL | 18 Aug | — | §4.1 — **NOT PRESENT in live list; do not rely on F-01 to F-04** |
+| SQL_Include | AZURE_SQL | 25 Aug | 25 Aug | **Not in register — rules unknown** |
+| ZSCALER_WEBPROXY_Filter | ZSCALER_WEBPROXY | 27 Aug | **1 Sep** | **Not in register — rules unknown** |
+| ZSCALER_ZPA_Filter | ZSCALER_ZPA | 24 Aug | 26 Aug | **Not in register — corresponds to P-03; status unknown** |
+| ZSCALER_DNS_Filter | ZSCALER_DNS | 25 Aug | 26 Aug | **Not in register — corresponds to P-05; status unknown** |
+| ZSCALER_FIREWALL_Filter | ZSCALER_FIREWALL | 25 Aug | 27 Aug | **Not in register — corresponds to P-06; status unknown** |
+| AZURE_ACTIVITY_Filter | AZURE_ACTIVITY | 24 Aug | 28 Aug | **Not in register — rules unknown** |
+| Azure_Gateway_Filter | AZURE_GATEWAY | 24 Aug | 26 Aug | **Not in register — rules unknown** |
+| Azure_Storage_Audit_Filter | AZURE_STORAGE_AUDIT | 26 Aug | 26 Aug | **Not in register — corresponds to P-07; status unknown** |
+| AWS_VPC_Flow | AWS_VPC_FLOW | 26 Aug | 26 Aug | **Not in register — corresponds to P-04; status unknown** |
+| Azure_Service_Bus_logs | MICROSOFT_SERVICEBUS_NAMESPACES | 26 Aug | 26 Aug | **Not in register — falls under P-11; status unknown** |
+| AZURE_WVD_MANAGEMENT | AZURE_WVD_MANAGEMENT | 28 Aug | 28 Aug | **Not in register — rules unknown** |
+
+**Consequence for this document:** the "Proposed" status of P-01, P-03 to P-07 and P-11, and the "Live" status of F-01 to F-04 and F-11, cannot be relied on until the pipeline definitions are exported. Treat this register as **NOT READY FOR APPROVAL** until the export in Appendix A is complete for all 15 pipelines.
+
+---
+
 ## 1. Purpose and scope
 
 This document is the register of every filter applied to log feeds passing through BindPlane into Google SecOps. For each filter it records the configuration, current status, rationale, conditions of operation and residual risk, so that each can be approved, reviewed, changed or rolled back under change control.
 
-**Scope:** 5 SecOps pipelines — `AWS_Filter`, `AWS_Filter2`, `Azure_SQL_Filter`, `ZSCALER_Filter`, `Microsoft_Insights_Components` — plus proposed changes to further log sources.
+**Scope:** the 15 SecOps pipelines listed in §0. Detailed filter entries (§4) currently exist for 5 of them, based on the 20–24 Aug export; the remaining 10 need their definitions exported.
 
 **Status key:** **LIVE** = in force · **PROPOSED** = not deployed, awaiting conditions and approval · **SUPERSEDED / REJECTED** = will not be deployed.
 
@@ -306,11 +335,15 @@ Figures are estimates. Reaching the target with the proposed schedule is margina
 
 ## Appendix A — Configuration exports to attach
 
-| Item | Source |
-|---|---|
-| F-05 enumerated CloudTrail regexes (3) | Export `AWS_Filter` pipeline JSON |
-| F-11 pipeline definition | Export `Microsoft_Insights_Components` pipeline JSON |
-| Current `ZSCALER_Filter` definition (status of P-01) | Export pipeline JSON |
+Export the pipeline JSON from `https://app.bindplane.com/p/01KC4W80ECMCJ8QJ9AG85S9S5J/secops-pipelines` for **all 15 pipelines** listed in §0 (the rules cannot be read through the API). Priority order:
+
+| Priority | Pipelines | Why |
+|---|---|---|
+| 1 | `SQL_Include`, `ZSCALER_WEBPROXY_Filter`, `ZSCALER_Filter`, `AWS_Filter`, `AWS_Filter2` | Changed after the export this register is based on, or replace documented filters |
+| 2 | `ZSCALER_ZPA_Filter`, `ZSCALER_DNS_Filter`, `ZSCALER_FIREWALL_Filter`, `AWS_VPC_Flow`, `Azure_Storage_Audit_Filter` | Correspond to proposals P-03 to P-07 — may already be live |
+| 3 | `AZURE_ACTIVITY_Filter`, `Azure_Gateway_Filter`, `Azure_Service_Bus_logs`, `AZURE_WVD_MANAGEMENT`, `MICROSOFT_INSIGHTS_COMPONENTS` | Not documented in this register |
+
+Also confirm what happened to `Azure_SQL_Filter` (absent from the live list) and whether `SQL_Include` replaces it.
 
 ## Appendix B — Configuration references in this repository
 
