@@ -192,7 +192,7 @@ This document is the register of every filter applied to log feeds passing throu
 | **Regex** | `"readOnly"\s*:\s*true` |
 | **Rationale** | Uses AWS's own read / write classification instead of a maintained list. |
 | **Retained** | All `readOnly:false` events (create, modify, delete, permission changes). |
-| **Conditions** | (1) GuardDuty ingestion confirmed active. (2) Cyber Defence to confirm no SecOps rule or hunt relies on read events (e.g. secret / parameter retrieval, STS). |
+| **Conditions** | (1) GuardDuty ingestion confirmed active. (2) Cyber Defence to confirm no SecOps rule or hunt relies on read events (e.g. secret / parameter retrieval, STS). (3) **One record per body:** sample events on the pipeline page show a single record per `{"Records":[…]}` body, so a body-level match drops only that record. If any body holds several records, one matching record would drop the whole body, including writes — confirm this does not occur. |
 | **Residual risk** | **Medium.** Credential-access and reconnaissance reads are not held in SecOps. Compensating control: GuardDuty; AWS-side CloudTrail retention. |
 
 #### F-07 — Rule B: drop AWS-service-invoked events
