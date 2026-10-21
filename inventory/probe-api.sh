@@ -42,4 +42,28 @@ gql summaries '{"query":"{ secOpsPipelineSummaries { id displayName description 
 echo "== GraphQL: full introspection (schema discovery) =="
 gql introspection '{"query":"query { __schema { queryType { name } mutationType { name } types { name kind fields { name args { name type { name kind ofType { name kind ofType { name kind } } } } type { name kind ofType { name kind ofType { name kind ofType { name kind } } } } } inputFields { name } enumValues { name } } } }"}'
 
+echo "== GraphQL: lightweight schema discovery =="
+gql q_fields   '{"query":"{ __schema { queryType { fields { name } } } }"}'
+gql m_fields   '{"query":"{ __schema { mutationType { fields { name } } } }"}'
+gql t_names    '{"query":"{ __schema { types { name } } }"}'
+gql g_single   '{"query":"{ secOpsPipeline(id:\"c072e6b7-0690-419c-82ca-901b7ab2bc3f\") { id displayName } }"}'
+gql g_list     '{"query":"{ secOpsPipelines { id displayName } }"}'
+
+echo
+echo "== Non-sensitive content summary (public-log safe) =="
+echo "-- REST fallback looks like: $(head -c 80 "$OUT/rest_secops_pipelines.json" | tr -d '\n\r' | tr -c '[:print:]' '?')"
+for f in introspection q_fields m_fields g_single g_list; do
+  echo "-- $f: $(head -c 400 "$OUT/$f.json" | tr -d '\n\r' | tr -c '[:print:]' '?')"
+done
+if command -v jq >/dev/null; then
+  echo "-- Query field names matching secops/pipeline/process/filter:"
+  jq -r '.data.__schema.queryType.fields[]?.name' "$OUT/q_fields.json" 2>/dev/null | grep -i -E 'secops|pipeline|process|filter|config|feed|stream' | tr '\n' ' '; echo
+  echo "-- Mutation field names matching same:"
+  jq -r '.data.__schema.mutationType.fields[]?.name' "$OUT/m_fields.json" 2>/dev/null | grep -i -E 'secops|pipeline' | tr '\n' ' '; echo
+  echo "-- Type names matching secops/pipeline:"
+  jq -r '.data.__schema.types[]?.name' "$OUT/t_names.json" 2>/dev/null | grep -i -E 'secops|pipeline|feed|stream' | tr '\n' ' '; echo
+  echo "-- Pipeline summaries:"
+  jq -c '.data.secOpsPipelineSummaries[]? | {displayName,updateTime}' "$OUT/summaries.json" 2>/dev/null
+fi
+
 echo "== Done. Output in $OUT =="
